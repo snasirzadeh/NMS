@@ -52,6 +52,7 @@ h2 { margin-top: 9px; font-size: 20px; letter-spacing: 0; }
 .empty-state { border-top: 1px solid var(--border); padding-top: 24px; }
 .workspace-grid { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(280px, .75fr); gap: 18px; align-items: start; }
 .panel-heading { display: flex; justify-content: space-between; align-items: start; gap: 20px; padding-bottom: 18px; border-bottom: 1px solid var(--border); }
+.panel-heading-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .record-count, .tree-count { color: var(--muted); font-size: 12px; }
 .group-tree { display: grid; gap: 5px; padding-top: 14px; }
 .tree-node { border-left: 1px solid #344453; }
@@ -76,7 +77,11 @@ button:hover { background: #214978; }
 .button-secondary:hover { background: var(--panel-2); color: var(--text); }
 .empty-copy { color: var(--muted); padding: 24px 0 4px; }
 .data-table { display: grid; }
-.data-row { display: grid; grid-template-columns: 1.2fr 1fr 1fr 1fr; gap: 14px; align-items: center; padding: 13px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
+.data-row { display: grid; grid-template-columns: 28px 1.2fr 1fr 1fr 1fr auto auto minmax(140px, 1fr); gap: 14px; align-items: center; padding: 13px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
+.data-row.selected { background: rgba(76, 157, 214, .08); }
+.device-select { display: flex; align-items: center; }
+.device-select input { accent-color: var(--accent); }
+.device-form-window { margin-top: 18px; max-width: 760px; }
 .data-row span { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .row-action { padding: 6px 8px; font-size: 11px; }
 .test-result { grid-column: 1 / -1; color: var(--muted); font-size: 11px; }
@@ -112,4 +117,4 @@ button:hover { background: #214978; }
 .topology-tools { position: absolute; z-index: 2; top: 16px; left: 16px; display: flex; gap: 4px; } .topology-tools button { min-width: 34px; padding: 7px 9px; }
 .topology-legend { position: absolute; z-index: 2; right: 16px; top: 18px; display: flex; gap: 14px; color: var(--muted); font-size: 11px; } .topology-legend span { display: inline-flex; align-items: center; gap: 6px; } .topology-legend i { width: 9px; height: 9px; display: inline-block; border-radius: 2px; } .legend-managed { background: #2d7cc2; } .legend-unmanaged { border: 1px dashed #8b98a8; background: #303842; }
 @media (max-width: 900px) { .workspace-grid, .backup-layout { grid-template-columns: 1fr; } }
-@media (max-width: 760px) { .app-shell { grid-template-columns: 1fr; } .sidebar { padding: 16px; } .brand-lockup { padding-bottom: 18px; } nav { grid-template-columns: repeat(2, 1fr); } .sidebar-footer { display: none; } .content { padding: 28px 18px; } .page-header, .device-header { display: block; } .environment-badge { display: inline-block; margin-top: 18px; } .port-bank { grid-template-columns: repeat(6, minmax(30px, 1fr)); } .data-row { grid-template-columns: 1fr 1fr; } .facts-grid { grid-template-columns: 1fr 1fr; } .facts-grid div:nth-child(2n) { border-right: 0; } .header-actions { justify-content: flex-start; margin-top: 18px; } }
+@media (max-width: 760px) { .app-shell { grid-template-columns: 1fr; } .sidebar { padding: 16px; } .brand-lockup { padding-bottom: 18px; } nav { grid-template-columns: repeat(2, 1fr); } .sidebar-footer { display: none; } .content { padding: 28px 18px; } .page-header, .device-header { display: block; } .environment-badge { display: inline-block; margin-top: 18px; } .port-bank { grid-template-columns: repeat(6, minmax(30px, 1fr)); } .data-row { grid-template-columns: 28px 1fr 1fr; } .data-row > span:nth-of-type(n+2), .data-row > .row-action, .data-row > .test-result { display: none; } .data-row > strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .facts-grid { grid-template-columns: 1fr 1fr; } .facts-grid div:nth-child(2n) { border-right: 0; } .header-actions { justify-content: flex-start; margin-top: 18px; } .panel-heading-actions { justify-content: flex-start; } }
