@@ -195,20 +195,12 @@ The Device Detail page should include a reusable original `SwitchFrontPanel` com
 
 Port state must come from the latest explicit device refresh. If it has not been fetched, show neutral/unknown state.
 
-## Phases
+## Implementation Status
 
-1. Architecture
-2. Foundation
-3. Groups and Devices
-4. SSH Configuration and Key Security
-5. Cisco Connectivity
-6. Device Management and Cisco-Inspired UI (implemented baseline)
-7. Topology (implemented baseline)
-8. Configuration Backups (implemented baseline)
-9. Hardening (implemented baseline)
-10. Documentation and Release Readiness (implemented baseline)
-
-Each phase has a dedicated prompt in `prompts/`.
+The original implementation sequence is complete through documentation and
+release readiness. Future work should be handled as a scoped maintenance task
+or feature request using `.codex/maintenance.md`; there is no active phase
+prompt queue.
 
 ## Open-Source Production Deployment
 

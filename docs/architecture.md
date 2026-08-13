@@ -1,7 +1,7 @@
 # Cisco NMS Architecture
 
-Status: Phase 10 documentation and release-readiness baseline. This document describes the target shape
-of the application; implementation is staged by the phase prompts.
+Status: Documentation and release-readiness baseline. This document describes
+the maintained target shape of the application.
 
 ## Goals and boundaries
 
@@ -61,7 +61,7 @@ frontend/
     types/               # API and domain TypeScript types
     styles/              # tokens and global styles
 docs/                    # architecture, plan, security, operations
-prompts/                 # phase-specific implementation contracts
+.codex/                  # maintained coding-agent instructions
 compose.yaml             # local production-like runtime
 ```
 

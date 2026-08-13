@@ -229,6 +229,13 @@ For security boundaries and operational precautions, see
 [docs/security.md](docs/security.md). For contribution checks, see
 [CONTRIBUTING.md](CONTRIBUTING.md).
 
+## Future Development
+
+The original implementation work is complete. For maintenance or new feature
+requests, read [`.codex/instructions.md`](.codex/instructions.md) and
+`.codex/maintenance.md` before editing. Product operations remain documented
+in this README, `docs/`, and `local/`.
+
 ## License
 
 MIT. See [LICENSE](LICENSE).
