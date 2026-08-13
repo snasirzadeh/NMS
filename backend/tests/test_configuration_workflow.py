@@ -34,7 +34,7 @@ def test_confirmation_token_cannot_be_replayed_for_another_device() -> None:
 
 def test_production_rejects_the_development_confirmation_secret(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("NMS_ENVIRONMENT", "production")
-    monkeypatch.delenv("NMS_CONFIG_CONFIRMATION_SECRET", raising=False)
+    monkeypatch.setenv("NMS_CONFIG_CONFIRMATION_SECRET", "local-development-confirmation-secret")
     get_settings.cache_clear()
     try:
         with pytest.raises(ConfigurationValidationError, match="changed in production"):
