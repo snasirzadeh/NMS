@@ -202,7 +202,7 @@ Port state must come from the latest explicit device refresh. If it has not been
 3. Groups and Devices
 4. SSH Configuration and Key Security
 5. Cisco Connectivity
-6. Device Management and Cisco-Inspired UI
+6. Device Management and Cisco-Inspired UI (implemented baseline)
 7. Topology
 8. Configuration Backups
 9. Hardening

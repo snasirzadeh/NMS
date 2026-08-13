@@ -3,12 +3,22 @@ from sqlalchemy.orm import Session
 
 from app.database.session import get_db
 from app.schemas.devices import DeviceCreate, DeviceRead, DeviceUpdate
-from app.schemas.cisco import ConnectionTestResponse, ShowCommandRequest, ShowCommandResponse
+from app.schemas.cisco import (
+    ConfigurationApplyRequest,
+    ConfigurationAuditResponse,
+    ConfigurationPreviewRequest,
+    ConfigurationPreviewResponse,
+    ConnectionTestResponse,
+    DeviceRefreshResponse,
+    ShowCommandRequest,
+    ShowCommandResponse,
+)
 from app.schemas.ssh import SSHConfigPreview, SSHConfigRequest
 from app.services.devices import service
 from app.services.errors import NotFoundError
 from app.services.ssh import SSHConfigError, parse_ssh_config
 from app.services.cisco import CiscoConnectionError, CiscoConnectionService
+from app.services.cisco.configuration import ConfigurationValidationError, apply_preview, preview
 
 router = APIRouter(prefix="/devices", tags=["devices"])
 cisco_service = CiscoConnectionService()
@@ -83,6 +93,43 @@ def show_command(
     except NotFoundError as error:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
     except CiscoConnectionError as error:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(error)) from error
+
+
+@router.post("/{device_id}/refresh", response_model=DeviceRefreshResponse)
+def refresh_device(device_id: int, db: Session = Depends(get_db)) -> DeviceRefreshResponse:
+    try:
+        device = service.get_device(db, device_id)
+        if not device.ssh_config:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Device has no SSH configuration")
+        return cisco_service.refresh(device.ssh_config)
+    except NotFoundError as error:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+    except CiscoConnectionError as error:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(error)) from error
+
+
+@router.post("/{device_id}/config/preview", response_model=ConfigurationPreviewResponse)
+def preview_configuration(device_id: int, payload: ConfigurationPreviewRequest, db: Session = Depends(get_db)) -> ConfigurationPreviewResponse:
+    try:
+        service.get_device(db, device_id)
+        result = preview(payload.commands)
+        return ConfigurationPreviewResponse(**result.__dict__)
+    except NotFoundError as error:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+    except ConfigurationValidationError as error:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(error)) from error
+
+
+@router.post("/{device_id}/config/apply", response_model=ConfigurationAuditResponse)
+def apply_configuration(device_id: int, payload: ConfigurationApplyRequest, db: Session = Depends(get_db)) -> ConfigurationAuditResponse:
+    try:
+        service.get_device(db, device_id)
+        result = apply_preview(payload.confirmation_token, payload.confirmed)
+        return ConfigurationAuditResponse(**result.__dict__)
+    except NotFoundError as error:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+    except ConfigurationValidationError as error:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(error)) from error
 
 

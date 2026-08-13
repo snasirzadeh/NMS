@@ -6,6 +6,8 @@ from typing import Any, Protocol
 from netmiko import ConnectHandler
 
 from app.services.ssh import SSHConfigError, SSHConfigPreview, parse_ssh_config
+from app.services.cisco.parsers import parse_refresh
+from app.schemas.cisco import DeviceRefreshResponse
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +43,8 @@ ALLOWED_SHOW_COMMANDS = {
     "show lldp neighbors detail",
     "show running-config",
 }
+
+REFRESH_COMMANDS = tuple(command for command in ALLOWED_SHOW_COMMANDS if command != "show running-config")
 
 
 def sanitize_exception(error: BaseException) -> str:
@@ -131,6 +135,25 @@ class CiscoConnectionService:
                     session.disconnect()
                 except Exception:
                     logger.warning("Cisco disconnect failed after show command")
+
+    def refresh(self, config_text: str) -> DeviceRefreshResponse:
+        session: CiscoSession | None = None
+        outputs: dict[str, str] = {}
+        try:
+            session = self.connect(config_text)
+            for command in REFRESH_COMMANDS:
+                outputs[command] = session.send_command(command)
+            return parse_refresh(outputs)
+        except CiscoConnectionError:
+            raise
+        except Exception as error:
+            raise CiscoConnectionError(sanitize_exception(error)) from error
+        finally:
+            if session is not None:
+                try:
+                    session.disconnect()
+                except Exception:
+                    logger.warning("Cisco disconnect failed after refresh")
 
 
 def _duration_ms(started: float) -> int:

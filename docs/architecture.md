@@ -1,6 +1,6 @@
 # Cisco NMS Architecture
 
-Status: Phase 5 Cisco connectivity baseline. This document describes the target shape
+Status: Phase 6 device management UI and explicit refresh baseline. This document describes the target shape
 of the application; implementation is staged by the phase prompts.
 
 ## Goals and boundaries
@@ -217,7 +217,9 @@ read-only at `/run/ssh-keys`. It must not mount the host's entire `~/.ssh`.
 ## Cisco connection abstraction
 
 `CiscoConnectionService` is a mockable adapter boundary with `connect`,
-`test_connection`, and allowlisted `show` operations. Its Netmiko factory
+`test_connection`, allowlisted `show`, and explicit `refresh` operations. Refresh
+uses one session and bounded commands, then passes raw output to isolated fallback
+parsers for facts, interfaces, VLANs, and CDP/LLDP neighbors. Its Netmiko factory
 receives only the validated effective hostname, user, port, and mapped key path
 from the SSH service. It owns timeouts, authentication setup, output
 collection, sanitized exception translation, and reliable cleanup. Legacy

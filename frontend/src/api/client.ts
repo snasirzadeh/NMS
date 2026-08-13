@@ -60,6 +60,11 @@ export type ConnectionTest = {
   duration_ms: number;
 };
 
+export type InterfaceRefresh = { name: string; description: string; admin_state: string; operational_state: string; vlan: string; mode: string; speed: string; duplex: string; neighbor: string | null };
+export type DeviceRefresh = { facts: { hostname: string; model: string; serial: string; software_version: string; uptime: string }; interfaces: InterfaceRefresh[]; vlans: { vlan_id: number; name: string; status: string }[]; neighbors: { local_interface: string; device_id: string; remote_interface: string; protocol: string; platform: string }[] };
+export type ConfigPreview = { commands: string[]; confirmation_token: string; expires_at: number };
+export type ConfigAudit = { accepted: boolean; executed: boolean; message: string };
+
 export const groupsApi = {
   tree: () => request<Group[]>("/groups/tree"),
   list: () => request<Group[]>("/groups"),
@@ -69,10 +74,15 @@ export const groupsApi = {
 
 export const devicesApi = {
   list: () => request<Device[]>("/devices"),
+  get: (deviceId: number) => request<Device>(`/devices/${deviceId}`),
   create: (payload: Omit<Device, "id" | "uptime_text">) =>
     request<Device>("/devices", { method: "POST", body: JSON.stringify(payload) }),
   previewSsh: (config: string) =>
     request<SSHPreview>("/devices/ssh-config/preview", { method: "POST", body: JSON.stringify({ config }) }),
   testConnection: (deviceId: number) =>
     request<ConnectionTest>(`/devices/${deviceId}/test-connection`, { method: "POST" }),
+  refresh: (deviceId: number) => request<DeviceRefresh>(`/devices/${deviceId}/refresh`, { method: "POST" }),
+  show: (deviceId: number, command: string) => request<{ command: string; output: string }>(`/devices/${deviceId}/show`, { method: "POST", body: JSON.stringify({ command }) }),
+  previewConfig: (deviceId: number, commands: string[]) => request<ConfigPreview>(`/devices/${deviceId}/config/preview`, { method: "POST", body: JSON.stringify({ commands }) }),
+  applyConfig: (deviceId: number, confirmation_token: string) => request<ConfigAudit>(`/devices/${deviceId}/config/apply`, { method: "POST", body: JSON.stringify({ confirmation_token, confirmed: true }) }),
 };
