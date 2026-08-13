@@ -1,11 +1,15 @@
-# Codex Project Guidance
+# Codex Pointer
 
-This directory contains the maintained instructions for future Codex work.
+The canonical project instructions are maintained in `docs/` so they are
+portable across accounts and visible to human operators.
 
-- [`instructions.md`](instructions.md): authoritative engineering, security,
-  scope, UI, and workflow rules.
-- [`maintenance.md`](maintenance.md): the short procedure for future changes
-  after the original implementation phases are complete.
+Start with:
 
-Product and operator documentation belongs in `README.md`, `docs/`, and
-`local/`. Do not duplicate those instructions here.
+1. `docs/README.md`
+2. `docs/project-guide/instructions.md`
+3. `docs/project-guide/maintenance.md`
+4. `docs/PLAN.md`
+5. `docs/architecture.md`
+
+`AGENTS.md` remains the repository entry point that points here and to the
+documentation index. Do not duplicate the instruction set in `.codex/`.

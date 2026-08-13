@@ -199,7 +199,7 @@ Port state must come from the latest explicit device refresh. If it has not been
 
 The original implementation sequence is complete through documentation and
 release readiness. Future work should be handled as a scoped maintenance task
-or feature request using `.codex/maintenance.md`; there is no active phase
+or feature request using `docs/project-guide/maintenance.md`; there is no active phase
 prompt queue.
 
 ## Open-Source Production Deployment

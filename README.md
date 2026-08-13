@@ -232,9 +232,10 @@ For security boundaries and operational precautions, see
 ## Future Development
 
 The original implementation work is complete. For maintenance or new feature
-requests, read [`.codex/instructions.md`](.codex/instructions.md) and
-`.codex/maintenance.md` before editing. Product operations remain documented
-in this README, `docs/`, and `local/`.
+requests, read [`docs/README.md`](docs/README.md) and
+[`docs/project-guide/maintenance.md`](docs/project-guide/maintenance.md)
+before editing. Product operations remain documented in this README, `docs/`,
+and `local/`.
 
 ## License
 
