@@ -115,7 +115,7 @@ def refresh_device(device_id: int, db: Session = Depends(get_db)) -> DeviceRefre
 def preview_configuration(device_id: int, payload: ConfigurationPreviewRequest, db: Session = Depends(get_db)) -> ConfigurationPreviewResponse:
     try:
         service.get_device(db, device_id)
-        result = preview(payload.commands)
+        result = preview(payload.commands, device_id=device_id)
         return ConfigurationPreviewResponse(**result.__dict__)
     except NotFoundError as error:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
@@ -127,7 +127,7 @@ def preview_configuration(device_id: int, payload: ConfigurationPreviewRequest, 
 def apply_configuration(device_id: int, payload: ConfigurationApplyRequest, db: Session = Depends(get_db)) -> ConfigurationAuditResponse:
     try:
         service.get_device(db, device_id)
-        result = apply_preview(payload.confirmation_token, payload.confirmed)
+        result = apply_preview(payload.confirmation_token, payload.confirmed, device_id=device_id)
         return ConfigurationAuditResponse(**result.__dict__)
     except NotFoundError as error:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error

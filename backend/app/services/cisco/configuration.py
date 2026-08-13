@@ -2,11 +2,10 @@ import base64
 import hashlib
 import hmac
 import json
-import os
 import time
 from dataclasses import dataclass
 
-from app.services.cisco import CiscoConnectionError
+from app.core.config import get_settings
 
 
 class ConfigurationValidationError(ValueError):
@@ -41,16 +40,17 @@ def validate_commands(commands: list[str]) -> list[str]:
     return normalized
 
 
-def preview(commands: list[str]) -> ConfigurationPreview:
+def preview(commands: list[str], *, device_id: int) -> ConfigurationPreview:
     normalized = validate_commands(commands)
+    _secret()
     expires_at = int(time.time()) + 600
-    payload = json.dumps({"commands": normalized, "expires_at": expires_at}, separators=(",", ":")).encode()
+    payload = json.dumps({"commands": normalized, "device_id": device_id, "expires_at": expires_at}, separators=(",", ":")).encode()
     encoded = base64.urlsafe_b64encode(payload).decode().rstrip("=")
     signature = hmac.new(_secret(), encoded.encode(), hashlib.sha256).hexdigest()
     return ConfigurationPreview(normalized, f"{encoded}.{signature}", expires_at)
 
 
-def apply_preview(token: str, confirmed: bool) -> ConfigurationAudit:
+def apply_preview(token: str, confirmed: bool, *, device_id: int) -> ConfigurationAudit:
     if not confirmed:
         raise ConfigurationValidationError("Explicit confirmation is required before apply")
     try:
@@ -60,7 +60,7 @@ def apply_preview(token: str, confirmed: bool) -> ConfigurationAudit:
             raise ValueError
         payload = json.loads(base64.urlsafe_b64decode(encoded + "=" * (-len(encoded) % 4)))
         commands = validate_commands(payload["commands"])
-        if int(payload["expires_at"]) < int(time.time()):
+        if int(payload["device_id"]) != device_id or int(payload["expires_at"]) <= int(time.time()):
             raise ValueError
     except (ValueError, KeyError, TypeError, json.JSONDecodeError):
         raise ConfigurationValidationError("Configuration preview token is invalid or expired") from None
@@ -69,4 +69,7 @@ def apply_preview(token: str, confirmed: bool) -> ConfigurationAudit:
 
 
 def _secret() -> bytes:
-    return os.getenv("NMS_CONFIG_CONFIRMATION_SECRET", "local-development-confirmation-secret").encode()
+    settings = get_settings()
+    if settings.environment.lower() in {"production", "prod"} and settings.config_confirmation_secret == "local-development-confirmation-secret":
+        raise ConfigurationValidationError("Configuration confirmation secret must be changed in production")
+    return settings.config_confirmation_secret.encode()

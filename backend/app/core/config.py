@@ -9,7 +9,10 @@ class Settings(BaseSettings):
 
     app_name: str = "Cisco NMS API"
     app_version: str = "0.2.0"
-    environment: str = "development"
+    environment: str = Field(default="development", validation_alias="NMS_ENVIRONMENT")
+    config_confirmation_secret: str = Field(
+        default="local-development-confirmation-secret", validation_alias="NMS_CONFIG_CONFIRMATION_SECRET"
+    )
     database_url: str = Field(
         default="postgresql+psycopg://nms:nms@postgres:5432/nms",
         validation_alias="DATABASE_URL",

@@ -71,7 +71,7 @@ def _host_directives(config_text: str) -> tuple[str, list[tuple[str, str]]]:
 
 def _map_identity_file(identity_file: str, require_exists: bool) -> tuple[str, str, bool]:
     settings = get_settings()
-    if "\x00" in identity_file or "\x00" in settings.ssh_identity_host_prefix:
+    if "\x00" in identity_file or "\x00" in settings.ssh_identity_host_prefix or "\\" in identity_file:
         raise SSHConfigError("IdentityFile contains an invalid character")
     if any(part == ".." for part in PurePosixPath(identity_file).parts):
         raise SSHConfigError("IdentityFile path traversal is not allowed")
@@ -114,6 +114,10 @@ def parse_ssh_config(config_text: str, *, require_identity_file: bool = False) -
     user = str(parsed.get("user", "")).strip()
     if not hostname or not user:
         raise SSHConfigError("HostName and User are required")
+    if len(hostname) > 255 or any(char.isspace() or ord(char) < 32 for char in hostname) or not re.fullmatch(r"[A-Za-z0-9_.:\[\]-]+", hostname):
+        raise SSHConfigError("HostName contains invalid characters")
+    if len(user) > 128 or any(char.isspace() or ord(char) < 32 for char in user) or not re.fullmatch(r"[A-Za-z0-9_.@+-]+", user):
+        raise SSHConfigError("User contains invalid characters")
     try:
         port = int(parsed.get("port", 22))
     except (TypeError, ValueError) as exc:

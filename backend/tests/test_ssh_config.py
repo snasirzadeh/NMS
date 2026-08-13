@@ -72,3 +72,19 @@ def test_missing_key_is_only_blocking_when_connection_validation_runs(key_root) 
 def test_preview_does_not_contain_private_key_content(key_root) -> None:
     preview = parse_ssh_config(config())
     assert "PRIVATE KEY MUST NEVER BE RETURNED" not in repr(preview)
+
+
+def test_identity_symlink_outside_allowlist_is_rejected(key_root, tmp_path) -> None:
+    outside = tmp_path / "outside-key"
+    outside.write_text("private", encoding="utf-8")
+    (key_root / "linked").symlink_to(outside)
+
+    with pytest.raises(SSHConfigError, match="outside"):
+        parse_ssh_config(config("~/.ssh/keys/linked"), require_identity_file=True)
+
+
+def test_hostname_and_user_control_characters_are_rejected(key_root) -> None:
+    with pytest.raises(SSHConfigError, match="HostName"):
+        parse_ssh_config(config().replace("192.0.2.10", "bad host"))
+    with pytest.raises(SSHConfigError, match="User"):
+        parse_ssh_config(config().replace("User cisco", "User bad user"))

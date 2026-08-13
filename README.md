@@ -41,13 +41,13 @@ cleanup commands, and the reproducible setup script.
 cp .env.example .env
 ```
 
-Edit `.env` and set `NMS_SSH_PRIVATE_KEY` to an absolute host path pointing to
-a private key dedicated to the NMS.
+Edit `.env`, replace both placeholder secrets, and set `NMS_SSH_KEYS_HOST_DIR`
+to the absolute host directory containing the dedicated NMS key.
 
 Example:
 
 ```text
-NMS_SSH_PRIVATE_KEY=/home/alice/.ssh/keys/cisco-nms
+NMS_SSH_KEYS_HOST_DIR=/home/alice/.ssh/keys
 ```
 
 Use restrictive permissions:
