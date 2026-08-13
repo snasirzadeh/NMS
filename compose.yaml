@@ -28,6 +28,8 @@ services:
       NMS_CONFIG_CONFIRMATION_SECRET: ${NMS_CONFIG_CONFIRMATION_SECRET:?NMS_CONFIG_CONFIRMATION_SECRET must be set in .env}
       SSH_IDENTITY_HOST_PREFIX: ${SSH_IDENTITY_HOST_PREFIX:-~/.ssh/keys}
       SSH_IDENTITY_CONTAINER_PREFIX: ${SSH_IDENTITY_CONTAINER_PREFIX:-/run/ssh-keys}
+    group_add:
+      - "${NMS_SSH_KEYS_GID:-1000}"
     volumes:
       - ${NMS_SSH_KEYS_HOST_DIR:-./local/ssh-keys}:/run/ssh-keys:ro
     depends_on:

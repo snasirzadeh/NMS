@@ -95,7 +95,10 @@ def _map_identity_file(identity_file: str, require_exists: bool) -> tuple[str, s
         mapped.relative_to(container_prefix)
     except ValueError as exc:
         raise SSHConfigError("Mapped IdentityFile is outside the container key directory") from exc
-    exists = mapped.is_file() and os.access(mapped, os.R_OK)
+    try:
+        exists = mapped.is_file() and os.access(mapped, os.R_OK)
+    except OSError as exc:
+        raise SSHConfigError("Configured IdentityFile cannot be accessed") from exc
     if require_exists and not exists:
         raise SSHConfigError("Configured IdentityFile is not a regular readable file")
     return str(mapped), relative, exists

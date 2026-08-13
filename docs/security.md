@@ -22,6 +22,9 @@ configuration backups.
 - The API container runs as the unprivileged `nms` user, drops capabilities,
   uses `no-new-privileges`, and has a read-only root filesystem with a
   no-execute temporary directory.
+- The dedicated key directory should use mode `750` and key files mode `640`,
+  with `NMS_SSH_KEYS_GID` set to the owning host group. Compose grants that
+  group to the API container without making the key world-readable.
 - `IdentityFile` is parsed as data. It must remain within the configured host
   prefix and its resolved container path must remain within the mounted key
   directory. Symlinks resolving outside that directory are rejected.

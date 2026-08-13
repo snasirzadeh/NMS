@@ -57,8 +57,8 @@ Keep the private key outside the repository, for example:
 Restrict the key permissions:
 
 ```bash
-chmod 700 /home/alice/.ssh/keys
-chmod 600 /home/alice/.ssh/keys/cisco-nms
+chmod 750 /home/alice/.ssh/keys
+chmod 640 /home/alice/.ssh/keys/cisco-nms
 ```
 
 Compose mounts only the configured key directory read-only:
@@ -67,6 +67,10 @@ Compose mounts only the configured key directory read-only:
 host:      ${NMS_SSH_KEYS_HOST_DIR}
 container: /run/ssh-keys
 ```
+
+Set `NMS_SSH_KEYS_GID` to the host group ID that owns this directory. Compose
+adds that group to the API container so the unprivileged API process can read
+the mounted key without making it world-readable. On Linux, use `id -g`.
 
 The saved device SSH configuration uses the configured host prefix and is
 mapped safely to the container prefix. With the defaults, this mapping is:

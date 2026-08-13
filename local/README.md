@@ -61,6 +61,9 @@ The Compose key directory is configured with `NMS_SSH_KEYS_HOST_DIR` in `.env`
 and is mounted read-only at `/run/ssh-keys` inside the API container. The
 default fallback is the empty `local/ssh-keys` directory for foundation testing;
 put real keys outside the repository.
+Set `NMS_SSH_KEYS_GID` to the owning host group ID, normally the output of
+`id -g`. For a dedicated key directory, use directory mode `750` and key file
+mode `640`; the API receives that group as a supplementary read-only group.
 
 If an older `.env` still contains `NMS_SSH_PRIVATE_KEY` or sets
 `SSH_IDENTITY_CONTAINER_PREFIX=/run/nms-ssh`, replace those values with the
