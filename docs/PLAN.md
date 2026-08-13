@@ -18,7 +18,7 @@ docker compose down
 
 ## Primary Features
 
-- Companies/customers
+- Hierarchical groups
 - Device inventory
 - Per-device OpenSSH configuration
 - SSH public-key authentication
@@ -30,7 +30,7 @@ docker compose down
 - Safe show-command execution
 - Safe configuration workflow with preview and confirmation
 - Manual running-config backups
-- Per-company topology discovery
+- Per-group topology discovery
 - Original Cisco-inspired switch/front-panel UI
 
 ## Out of Scope
@@ -78,18 +78,30 @@ using an explicitly configured host-prefix-to-container-prefix rule.
 
 ## Main Entities
 
-### Company
+### Group
 
 - id
+- parent_id nullable
 - name
 - description
 - created_at
 - updated_at
 
+Groups may be nested to represent the inventory tree, for example:
+
+```text
+Aria
+├── Main Office
+├── Factory
+│   ├── Production
+│   └── Office
+└── Personal Lab
+```
+
 ### Device
 
 - id
-- company_id
+- group_id
 - display_name
 - hostname
 - management_ip
@@ -110,7 +122,7 @@ using an explicitly configured host-prefix-to-container-prefix rule.
 ### TopologyLink
 
 - id
-- company_id
+- group_id
 - source_device_id
 - source_interface
 - destination_device_id nullable
@@ -164,7 +176,7 @@ Raw Netmiko or SSH logic must not live in API route handlers.
 Main navigation:
 
 - Dashboard
-- Companies
+- Groups
 - Devices
 - Topology
 - Backups
@@ -187,7 +199,7 @@ Port state must come from the latest explicit device refresh. If it has not been
 
 1. Architecture
 2. Foundation
-3. Companies and Devices
+3. Groups and Devices
 4. SSH Configuration and Key Security
 5. Cisco Connectivity
 6. Device Management and Cisco-Inspired UI

@@ -1,6 +1,6 @@
 # Cisco NMS Architecture
 
-Status: Phase 2 foundation baseline. This document describes the target shape
+Status: Phase 3 groups and devices baseline. This document describes the target shape
 of the application; implementation is staged by the phase prompts.
 
 ## Goals and boundaries
@@ -100,21 +100,23 @@ PostgreSQL is the production database. SQLAlchemy 2 ORM models and Alembic
 migrations are the source of schema changes.
 
 ```text
-Company 1 --- * Device 1 --- * ConfigBackup
-   |              |
-   |              +--- * ConfigAudit
-   |
-   +--- * TopologyLink (source and optional destination device)
+Group 1 --- * child Group
+  |
+  +--- * Device 1 --- * ConfigBackup
+                     |
+                     +--- * ConfigAudit
 ```
 
-### Company
+### Group
 
-`id`, `name`, `description`, `created_at`, `updated_at`. Names are required and
-unique for the single-user inventory.
+`id`, `parent_id` nullable, `name`, `description`, `created_at`, and
+`updated_at`. A group can contain child groups, allowing structures such as
+`Aria / Factory / Production`. Names are not globally unique because the same
+site label may appear under different parent groups.
 
 ### Device
 
-`id`, `company_id`, `display_name`, `hostname`, `management_ip`, `device_type`,
+`id`, `group_id`, `display_name`, `hostname`, `management_ip`, `device_type`,
 `platform`, `ssh_port`, `ssh_config`, `description`, `site`, `rack`,
 `serial_number`, `model`, `software_version`, `uptime_text`, `created_at`, and
 `updated_at`.
@@ -125,7 +127,7 @@ connection metadata are inventory, not live status.
 
 ### TopologyLink
 
-`id`, `company_id`, `source_device_id`, `source_interface`,
+`id`, `group_id`, `source_device_id`, `source_interface`,
 `destination_device_id` nullable, `destination_hostname`,
 `destination_interface`, `discovery_protocol`, and `last_discovered_at`.
 
@@ -157,13 +159,13 @@ remain `/health` for container probes.
 
 | Resource | Endpoints | Purpose |
 | --- | --- | --- |
-| Companies | `GET/POST /companies`, `GET/PATCH/DELETE /companies/{id}` | Manage customer inventory |
+| Groups | `GET/POST /groups`, `GET/PATCH/DELETE /groups/{id}`, `GET /groups/tree` | Manage hierarchical inventory groups |
 | Devices | `GET/POST /devices`, `GET/PATCH/DELETE /devices/{id}` | Manage switch inventory |
 | Device actions | `POST /devices/{id}/refresh`, `/test-connection`, `/show` | Explicit network actions |
 | Device data | `GET /devices/{id}/interfaces`, `/vlans`, `/neighbors` | Read last fetched results |
 | Config | `POST /devices/{id}/config/preview`, `/config/apply` | Preview and confirmed configuration workflow |
 | Backups | `GET/POST /devices/{id}/backups`, `GET /backups/{id}` | Manual running-config backups |
-| Topology | `GET /companies/{id}/topology`, `POST /companies/{id}/topology/discover` | Read or explicitly discover links |
+| Topology | `GET /groups/{id}/topology`, `POST /groups/{id}/topology/discover` | Read or explicitly discover links |
 
 Destructive or network-changing operations require an explicit action request;
 the apply endpoint requires a confirmation token produced by preview. Safe
@@ -230,18 +232,18 @@ only, but no scheduler or persistent worker is part of this architecture.
 ## Topology discovery
 
 `TopologyService` asks `CiscoConnection` for CDP/LLDP data, normalizes device
-and interface identifiers, resolves known devices within the same company,
+and interface identifiers, resolves known devices within the same group tree,
 and upserts `TopologyLink` rows. It records the discovery protocol and
 timestamp. Ambiguous or unresolved peers are kept as external hostname links.
 
-The topology API returns nodes derived from company devices and links derived
+The topology API returns nodes derived from group devices and links derived
 from persisted discovery results. Cytoscape.js or a comparable graph library
 is a frontend rendering detail; graph layout must not alter persisted data.
 
 ## Frontend structure and state
 
 React and TypeScript use the API client as the only network boundary. Pages are
-organized around Dashboard, Companies, Devices, Topology, and Backups. Device
+organized around Dashboard, Groups, Devices, Topology, and Backups. Device
 Detail has Overview, Interfaces, VLANs, Neighbors, Configuration, CLI, and
 Backups tabs.
 
@@ -278,7 +280,7 @@ sanitized form only; credential material, private-key content, full SSH
 configuration where it may contain secrets, and raw device output are never
 logged by default.
 
-Logs are structured and include operation, device ID, company ID where
+Logs are structured and include operation, device ID, group ID where
 available, duration, result, and request ID. Connection failures expose useful
 operator guidance without echoing host configuration or library tracebacks.
 
@@ -317,18 +319,18 @@ explicit environment flag.
 - Unknown topology peers are stored as links rather than auto-created devices,
   avoiding false inventory while preserving discovery information.
 
-## Phase 2 acceptance criteria
+## Phase 3 acceptance criteria
 
-Phase 2 is complete when:
+Phase 3 is complete when:
 
 1. The FastAPI app has settings, database engine/session wiring, and a health
    route that remains usable without a live Cisco device.
-2. Alembic is configured and applies an initial migration to PostgreSQL.
-3. SQLAlchemy declarative base and the initial Company/Device-oriented schema
-   are established without storing private-key contents.
-4. The backend test command runs in a clean environment and includes health,
-   settings, database, and migration coverage appropriate to the scaffold.
-5. Docker Compose starts the intended services with PostgreSQL health gating;
-   only `web` publishes a host port.
-6. The frontend still builds and can reach the API through the Nginx `/api`
-   proxy, with no Phase 3 inventory workflow implemented.
+2. Alembic applies the groups hierarchy migration without losing existing
+   device rows.
+3. Group CRUD rejects missing parents and cycles, and deletion rejects groups
+   that still contain child groups or devices.
+4. Device CRUD validates management IP and SSH port and requires a valid group.
+5. The backend test command covers hierarchy, ownership, CRUD services, and
+   validation without making real SSH connections.
+6. The frontend provides Groups and Devices workspaces with a nested group tree,
+   inventory table, and Add Device form with SSH configuration textarea.

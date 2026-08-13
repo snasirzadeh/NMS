@@ -10,7 +10,7 @@ class Device(Base):
     __tablename__ = "devices"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    company_id: Mapped[int] = mapped_column(ForeignKey("companies.id", ondelete="RESTRICT"), index=True)
+    group_id: Mapped[int] = mapped_column(ForeignKey("groups.id", ondelete="RESTRICT"), index=True)
     display_name: Mapped[str] = mapped_column(String(200))
     hostname: Mapped[str] = mapped_column(String(255))
     management_ip: Mapped[str] = mapped_column(String(255))
@@ -30,4 +30,4 @@ class Device(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
-    company: Mapped["Company"] = relationship(back_populates="devices")
+    group: Mapped["Group"] = relationship(back_populates="devices")

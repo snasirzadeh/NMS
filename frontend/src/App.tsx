@@ -1,8 +1,11 @@
+import { FormEvent, useEffect, useState } from "react";
 import { NavLink, Route, Routes } from "react-router-dom";
+
+import { Device, devicesApi, Group, groupsApi } from "./api/client";
 
 const navigation = [
   { label: "Dashboard", path: "/" },
-  { label: "Companies", path: "/companies" },
+  { label: "Groups", path: "/groups" },
   { label: "Devices", path: "/devices" },
   { label: "Topology", path: "/topology" },
   { label: "Backups", path: "/backups" },
@@ -12,82 +15,47 @@ function Dashboard() {
   return (
     <>
       <header className="page-header">
-        <div>
-          <span className="eyebrow">OPERATIONS CONSOLE</span>
-          <h1>Network workspace</h1>
-          <p className="lede">A local control surface for deliberate Cisco switch management.</p>
-        </div>
+        <div><span className="eyebrow">OPERATIONS CONSOLE</span><h1>Network workspace</h1><p className="lede">A local control surface for deliberate Cisco switch management.</p></div>
         <span className="environment-badge">LOCAL / READY</span>
       </header>
       <section className="device-panel" aria-labelledby="foundation-title">
-        <div className="panel-copy">
-          <span className="section-kicker">FOUNDATION</span>
-          <h2 id="foundation-title">Inventory foundation is online</h2>
-          <p>
-            The API, database connection layer, migration system, and reverse proxy are ready for inventory workflows.
-          </p>
-        </div>
-        <div className="signal-grid" aria-label="Foundation service status">
-          <div><strong>API</strong><span>Available</span></div>
-          <div><strong>DATABASE</strong><span>Compose service</span></div>
-          <div><strong>SSH</strong><span>Explicit actions only</span></div>
-        </div>
-      </section>
-      <section className="device-panel panel-secondary" aria-labelledby="preview-title">
-        <div className="panel-copy">
-          <span className="section-kicker">HARDWARE PREVIEW</span>
-          <h2 id="preview-title">Neutral port surface</h2>
-          <p>Port state stays unknown until a later explicit refresh supplies real interface data.</p>
-        </div>
-        <div className="port-bank" aria-label="Unknown switch-port preview">
-          {Array.from({ length: 12 }, (_, index) => (
-            <div className="port" key={index}>
-              <span>{String(index + 1).padStart(2, "0")}</span>
-            </div>
-          ))}
-        </div>
+        <div className="panel-copy"><span className="section-kicker">FOUNDATION</span><h2 id="foundation-title">Inventory foundation is online</h2><p>The API, database, migration system, and reverse proxy are ready for group and device workflows.</p></div>
+        <div className="signal-grid" aria-label="Foundation service status"><div><strong>API</strong><span>Available</span></div><div><strong>DATABASE</strong><span>Compose service</span></div><div><strong>SSH</strong><span>Explicit actions only</span></div></div>
       </section>
     </>
   );
 }
 
-function PlaceholderPage({ title }: { title: string }) {
-  return (
-    <section className="empty-state">
-      <span className="section-kicker">MODULE</span>
-      <h1>{title}</h1>
-      <p>This foundation view is ready for its implementation phase.</p>
-    </section>
-  );
+function GroupTree({ groups, level = 0 }: { groups: Group[]; level?: number }) {
+  return <div className="group-tree">{groups.map((group) => <div className="tree-node" key={group.id} style={{ marginLeft: level * 18 }}><div className="tree-row"><span className="tree-branch">{group.children?.length ? "+" : "-"}</span><strong>{group.name}</strong><span className="tree-count">{group.device_count ?? 0} devices</span></div>{group.children?.length ? <GroupTree groups={group.children} level={level + 1} /> : null}</div>)}</div>;
 }
 
+function GroupsPage() {
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [name, setName] = useState("");
+  const [parentId, setParentId] = useState("");
+  const [error, setError] = useState("");
+  const load = () => groupsApi.tree().then(setGroups).catch((reason: Error) => setError(reason.message));
+  useEffect(() => { load(); }, []);
+  const submit = async (event: FormEvent) => {
+    event.preventDefault(); setError("");
+    try { await groupsApi.create({ name, parent_id: parentId ? Number(parentId) : null }); setName(""); setParentId(""); await load(); }
+    catch (reason) { setError((reason as Error).message); }
+  };
+  const flat = groups.flatMap(function flatten(group): Group[] { return [group, ...(group.children ?? []).flatMap(flatten)]; });
+  return <><header className="page-header"><div><span className="eyebrow">INVENTORY STRUCTURE</span><h1>Groups</h1><p className="lede">Organize sites, environments, and racks into a navigable workspace.</p></div></header><div className="workspace-grid"><section className="device-panel"><div className="panel-heading"><div><span className="section-kicker">GROUP TREE</span><h2>Network organization</h2></div><span className="record-count">{flat.length} groups</span></div>{error ? <p className="form-error">{error}</p> : null}{groups.length ? <GroupTree groups={groups} /> : <p className="empty-copy">No groups have been created.</p>}</section><form className="device-panel form-panel" onSubmit={submit}><span className="section-kicker">NEW GROUP</span><h2>Add group</h2><label>Name<input value={name} onChange={(event) => setName(event.target.value)} required /></label><label>Parent group<select value={parentId} onChange={(event) => setParentId(event.target.value)}><option value="">Top level</option>{flat.map((group) => <option value={group.id} key={group.id}>{group.name}</option>)}</select></label><button type="submit">Create group</button></form></div></>;
+}
+
+function DevicesPage() {
+  const [devices, setDevices] = useState<Device[]>([]); const [groups, setGroups] = useState<Group[]>([]); const [error, setError] = useState("");
+  const [form, setForm] = useState({ group_id: "", display_name: "", hostname: "", management_ip: "", platform: "", ssh_port: "22", ssh_config: "" });
+  useEffect(() => { Promise.all([devicesApi.list(), groupsApi.list()]).then(([deviceRows, groupRows]) => { setDevices(deviceRows); setGroups(groupRows); }).catch((reason: Error) => setError(reason.message)); }, []);
+  const submit = async (event: FormEvent) => { event.preventDefault(); setError(""); try { const created = await devicesApi.create({ ...form, group_id: Number(form.group_id), ssh_port: Number(form.ssh_port), device_type: "switch", description: null, site: null, rack: null, serial_number: null, model: null, software_version: null }); setDevices((current) => [...current, created]); setForm({ group_id: "", display_name: "", hostname: "", management_ip: "", platform: "", ssh_port: "22", ssh_config: "" }); } catch (reason) { setError((reason as Error).message); } };
+  return <><header className="page-header"><div><span className="eyebrow">DEVICE INVENTORY</span><h1>Devices</h1><p className="lede">Maintain switch identity and placement without implying live status.</p></div></header><div className="workspace-grid"><section className="device-panel"><div className="panel-heading"><div><span className="section-kicker">INVENTORY</span><h2>Managed switches</h2></div><span className="record-count">{devices.length} devices</span></div>{error ? <p className="form-error">{error}</p> : null}<div className="data-table">{devices.map((device) => <div className="data-row" key={device.id}><strong>{device.display_name}</strong><span>{device.management_ip}</span><span>{device.hostname}</span><span>{groups.find((group) => group.id === device.group_id)?.name ?? "Unknown group"}</span></div>)}{!devices.length ? <p className="empty-copy">No devices have been added.</p> : null}</div></section><form className="device-panel form-panel" onSubmit={submit}><span className="section-kicker">NEW DEVICE</span><h2>Add device</h2><label>Group<select value={form.group_id} onChange={(event) => setForm({ ...form, group_id: event.target.value })} required><option value="">Select group</option>{groups.map((group) => <option value={group.id} key={group.id}>{group.name}</option>)}</select></label><label>Display name<input value={form.display_name} onChange={(event) => setForm({ ...form, display_name: event.target.value })} required /></label><label>Hostname<input value={form.hostname} onChange={(event) => setForm({ ...form, hostname: event.target.value })} required /></label><label>Management IP<input value={form.management_ip} onChange={(event) => setForm({ ...form, management_ip: event.target.value })} placeholder="192.0.2.10" required /></label><div className="form-split"><label>Platform<input value={form.platform} onChange={(event) => setForm({ ...form, platform: event.target.value })} placeholder="IOS-XE" /></label><label>SSH port<input type="number" min="1" max="65535" value={form.ssh_port} onChange={(event) => setForm({ ...form, ssh_port: event.target.value })} required /></label></div><label>SSH Configuration<textarea className="ssh-editor" value={form.ssh_config} onChange={(event) => setForm({ ...form, ssh_config: event.target.value })} spellCheck="false" placeholder="Host switch-name\n    HostName 192.0.2.10\n    User cisco" /></label><button type="submit">Add device</button></form></div></>;
+}
+
+function PlaceholderPage({ title }: { title: string }) { return <section className="empty-state"><span className="section-kicker">MODULE</span><h1>{title}</h1><p>This foundation view is ready for its implementation phase.</p></section>; }
+
 export default function App() {
-  return (
-    <main className="app-shell">
-      <aside className="sidebar">
-        <div className="brand-lockup">
-          <div className="brand-mark">N</div>
-          <div><strong>NMS</strong><span>NETWORK CONTROL</span></div>
-        </div>
-        <nav aria-label="Primary navigation">
-          {navigation.map((item) => (
-            <NavLink key={item.path} to={item.path} end={item.path === "/"}>
-              <span className="nav-dot" aria-hidden="true" />
-              {item.label}
-            </NavLink>
-          ))}
-        </nav>
-        <footer className="sidebar-footer"><span className="status-dot" /> Local workspace</footer>
-      </aside>
-      <section className="content">
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/companies" element={<PlaceholderPage title="Companies" />} />
-          <Route path="/devices" element={<PlaceholderPage title="Devices" />} />
-          <Route path="/topology" element={<PlaceholderPage title="Topology" />} />
-          <Route path="/backups" element={<PlaceholderPage title="Backups" />} />
-        </Routes>
-      </section>
-    </main>
-  );
+  return <main className="app-shell"><aside className="sidebar"><div className="brand-lockup"><div className="brand-mark">N</div><div><strong>NMS</strong><span>NETWORK CONTROL</span></div></div><nav aria-label="Primary navigation">{navigation.map((item) => <NavLink key={item.path} to={item.path} end={item.path === "/"}><span className="nav-dot" aria-hidden="true" />{item.label}</NavLink>)}</nav><footer className="sidebar-footer"><span className="status-dot" /> Local workspace</footer></aside><section className="content"><Routes><Route path="/" element={<Dashboard />} /><Route path="/groups" element={<GroupsPage />} /><Route path="/devices" element={<DevicesPage />} /><Route path="/topology" element={<PlaceholderPage title="Topology" />} /><Route path="/backups" element={<PlaceholderPage title="Backups" />} /></Routes></section></main>;
 }

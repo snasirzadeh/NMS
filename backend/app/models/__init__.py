@@ -1,4 +1,4 @@
-from app.models.company import Company
 from app.models.device import Device
+from app.models.group import Group
 
-__all__ = ["Company", "Device"]
+__all__ = ["Device", "Group"]
