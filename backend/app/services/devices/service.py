@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.models import Device, Group
 from app.schemas.devices import DeviceCreate, DeviceUpdate
 from app.services.errors import NotFoundError
+from app.services.ssh import SSHConfigError, parse_ssh_config
 
 
 def get_device(db: Session, device_id: int) -> Device:
@@ -29,6 +30,8 @@ def list_devices(db: Session, group_id: int | None = None) -> list[Device]:
 
 def create_device(db: Session, payload: DeviceCreate) -> Device:
     ensure_group(db, payload.group_id)
+    if payload.ssh_config:
+        parse_ssh_config(payload.ssh_config)
     device = Device(**payload.model_dump())
     db.add(device)
     db.commit()
@@ -41,6 +44,8 @@ def update_device(db: Session, device_id: int, payload: DeviceUpdate) -> Device:
     values = payload.model_dump(exclude_unset=True)
     if "group_id" in values:
         ensure_group(db, values["group_id"])
+    if values.get("ssh_config"):
+        parse_ssh_config(values["ssh_config"])
     for key, value in values.items():
         setattr(device, key, value)
     db.commit()

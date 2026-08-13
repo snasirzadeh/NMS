@@ -1,6 +1,6 @@
 # Cisco NMS Architecture
 
-Status: Phase 3 groups and devices baseline. This document describes the target shape
+Status: Phase 4 SSH security baseline. This document describes the target shape
 of the application; implementation is staged by the phase prompts.
 
 ## Goals and boundaries
@@ -162,6 +162,7 @@ remain `/health` for container probes.
 | Groups | `GET/POST /groups`, `GET/PATCH/DELETE /groups/{id}`, `GET /groups/tree` | Manage hierarchical inventory groups |
 | Devices | `GET/POST /devices`, `GET/PATCH/DELETE /devices/{id}` | Manage switch inventory |
 | Device actions | `POST /devices/{id}/refresh`, `/test-connection`, `/show` | Explicit network actions |
+| SSH configuration | `POST /devices/ssh-config/preview`, `POST /devices/{id}/ssh-config/preview` | Parse and preview safe effective settings |
 | Device data | `GET /devices/{id}/interfaces`, `/vlans`, `/neighbors` | Read last fetched results |
 | Config | `POST /devices/{id}/config/preview`, `/config/apply` | Preview and confirmed configuration workflow |
 | Backups | `GET/POST /devices/{id}/backups`, `GET /backups/{id}` | Manual running-config backups |
@@ -175,7 +176,8 @@ resource implementation rather than leaking ORM models to clients.
 
 ## OpenSSH configuration and key mapping
 
-The SSH service uses a parser/library that produces structured directives. It
+The SSH service uses Paramiko's structured OpenSSH parser plus a raw-directive
+validation pass. It
 does not invoke `ssh`, `ssh-config`, a shell, or string interpolation. Parsing
 is performed with a bounded input size and rejects malformed or ambiguous
 configuration where security-relevant behavior cannot be determined.
@@ -319,18 +321,19 @@ explicit environment flag.
 - Unknown topology peers are stored as links rather than auto-created devices,
   avoiding false inventory while preserving discovery information.
 
-## Phase 3 acceptance criteria
+## Phase 4 acceptance criteria
 
-Phase 3 is complete when:
+Phase 4 is complete when:
 
 1. The FastAPI app has settings, database engine/session wiring, and a health
    route that remains usable without a live Cisco device.
-2. Alembic applies the groups hierarchy migration without losing existing
-   device rows.
-3. Group CRUD rejects missing parents and cycles, and deletion rejects groups
-   that still contain child groups or devices.
-4. Device CRUD validates management IP and SSH port and requires a valid group.
-5. The backend test command covers hierarchy, ownership, CRUD services, and
-   validation without making real SSH connections.
-6. The frontend provides Groups and Devices workspaces with a nested group tree,
-   inventory table, and Add Device form with SSH configuration textarea.
+2. SSH config validation supports the approved directives and rejects malformed,
+   duplicate, wildcard, multi-host, and unsupported configurations.
+3. IdentityFile mapping rejects traversal and disallowed paths, maps the exact
+   host prefix to `/run/ssh-keys`, and checks regular readable files when needed.
+4. Preview responses contain effective metadata and warnings only, never key
+   contents or private-key paths.
+5. The backend test command covers valid, invalid, legacy, and path-security
+   cases without making real SSH connections.
+6. The frontend provides SSH configuration editing, safe preview metadata, and
+   non-blocking legacy algorithm warnings.

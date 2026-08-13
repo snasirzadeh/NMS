@@ -77,6 +77,15 @@ curl -fsS http://127.0.0.1:8080/api/v1/health
 The API waits for PostgreSQL, applies pending Alembic migrations, and then
 starts FastAPI.
 
+SSH configuration is validated by the Phase 4 preview endpoint without opening
+an SSH connection:
+
+```bash
+curl -fsS -X POST http://127.0.0.1:8080/api/v1/devices/ssh-config/preview \
+  -H 'Content-Type: application/json' \
+  -d '{"config":"Host cisco-sw1\n    HostName 192.0.2.10\n    User cisco\n    IdentityFile ~/.ssh/keys/cisco"}'
+```
+
 Run local checks:
 
 ```bash

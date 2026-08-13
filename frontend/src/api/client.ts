@@ -41,6 +41,18 @@ export type Device = {
   uptime_text: string | null;
 };
 
+export type SSHPreview = {
+  host: string;
+  hostname: string;
+  user: string;
+  port: number;
+  identities_only: boolean;
+  identity_file_relative: string;
+  identity_file_exists: boolean;
+  algorithms: Record<string, string>;
+  warnings: string[];
+};
+
 export const groupsApi = {
   tree: () => request<Group[]>("/groups/tree"),
   list: () => request<Group[]>("/groups"),
@@ -52,4 +64,6 @@ export const devicesApi = {
   list: () => request<Device[]>("/devices"),
   create: (payload: Omit<Device, "id" | "uptime_text">) =>
     request<Device>("/devices", { method: "POST", body: JSON.stringify(payload) }),
+  previewSsh: (config: string) =>
+    request<SSHPreview>("/devices/ssh-config/preview", { method: "POST", body: JSON.stringify({ config }) }),
 };

@@ -68,6 +68,12 @@ button:hover { background: #214978; }
 .form-split { display: grid; grid-template-columns: 1fr 100px; gap: 10px; }
 .ssh-editor { min-height: 180px; resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; line-height: 1.5; }
 .form-error { padding: 10px; border: 1px solid #6b3e43; background: #29191d; color: #f0a5ac; font-size: 12px; }
+.ssh-preview { display: grid; gap: 5px; padding: 10px; border: 1px solid #31506f; background: #101e2c; color: #b9d7f5; font-size: 12px; }
+.ssh-preview span { color: var(--text); }
+.ssh-preview em { color: #f0c578; font-style: normal; }
+.form-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.button-secondary { border-color: var(--border); background: transparent; color: var(--muted); }
+.button-secondary:hover { background: var(--panel-2); color: var(--text); }
 .empty-copy { color: var(--muted); padding: 24px 0 4px; }
 .data-table { display: grid; }
 .data-row { display: grid; grid-template-columns: 1.2fr 1fr 1fr 1fr; gap: 14px; align-items: center; padding: 13px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
