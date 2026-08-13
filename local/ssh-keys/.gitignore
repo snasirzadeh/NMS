@@ -1,0 +1,3 @@
+# Place no private keys in this repository. Configure an external directory in .env.
+*
+!.gitignore

@@ -1,0 +1,27 @@
+[project]
+name = "cisco-nms-backend"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi",
+  "uvicorn[standard]",
+  "sqlalchemy>=2",
+  "alembic",
+  "psycopg[binary]",
+  "pydantic>=2",
+  "pydantic-settings",
+  "netmiko",
+]
+
+[project.optional-dependencies]
+test = [
+  "pytest",
+  "pytest-asyncio",
+  "httpx",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.setuptools.packages.find]
+include = ["app*"]

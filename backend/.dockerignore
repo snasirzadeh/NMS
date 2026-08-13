@@ -1,0 +1,16 @@
+.venv
+__pycache__
+*.py[cod]
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.eggs
+*.egg-info
+.env
+keys
+secrets
+*.pem
+*.key
+id_rsa
+id_ed25519
+*.log
