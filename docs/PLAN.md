@@ -204,7 +204,7 @@ Port state must come from the latest explicit device refresh. If it has not been
 5. Cisco Connectivity
 6. Device Management and Cisco-Inspired UI (implemented baseline)
 7. Topology (implemented baseline)
-8. Configuration Backups
+8. Configuration Backups (implemented baseline)
 9. Hardening
 10. Documentation and Release Readiness
 

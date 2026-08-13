@@ -1,0 +1,11 @@
+import { useEffect, useState } from "react";
+import { Backup, BackupSummary, backupsApi, devicesApi } from "../api/client";
+
+export function BackupPanel({ deviceId }: { deviceId: number }) {
+  const [backups, setBackups] = useState<BackupSummary[]>([]); const [selected, setSelected] = useState<Backup | null>(null); const [busy, setBusy] = useState(false); const [error, setError] = useState("");
+  const load = () => devicesApi.backups(deviceId).then(setBackups).catch((reason: Error) => setError(reason.message));
+  useEffect(() => { load(); }, [deviceId]);
+  const create = async () => { setBusy(true); setError(""); try { const backup = await devicesApi.createBackup(deviceId); setBackups((current) => [backup, ...current]); setSelected(await backupsApi.get(backup.id)); } catch (reason) { setError((reason as Error).message); } finally { setBusy(false); } };
+  const open = async (backupId: number) => { setError(""); try { setSelected(await backupsApi.get(backupId)); } catch (reason) { setError((reason as Error).message); } };
+  return <section className="backup-layout"><div className="device-panel backup-history"><div className="panel-heading"><div><span className="section-kicker">MANUAL CAPTURES</span><h2>Running-config history</h2></div><button type="button" onClick={create} disabled={busy}>{busy ? "Backing up..." : "Backup running configuration"}</button></div>{error ? <p className="form-error">{error}</p> : null}<div className="backup-list">{backups.map((backup) => <button type="button" className={selected?.id === backup.id ? "backup-row selected" : "backup-row"} key={backup.id} onClick={() => open(backup.id)}><strong>Backup #{backup.id}</strong><span>{new Date(backup.created_at).toLocaleString()}</span><code>{backup.checksum.slice(0, 16)}...</code></button>)}{!backups.length ? <p className="empty-copy">No running-config backups.</p> : null}</div></div><div className="device-panel backup-viewer"><div className="panel-heading"><div><span className="section-kicker">CONFIGURATION</span><h2>{selected ? `Backup #${selected.id}` : "Select a backup"}</h2></div>{selected ? <code>{selected.checksum}</code> : null}</div><pre>{selected?.configuration || "Select a backup to view its captured configuration."}</pre></div></section>;
+}

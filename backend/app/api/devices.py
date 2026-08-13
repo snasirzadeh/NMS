@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.database.session import get_db
 from app.schemas.devices import DeviceCreate, DeviceRead, DeviceUpdate
+from app.schemas.backups import BackupCreateResponse, BackupRead, BackupSummary
 from app.schemas.cisco import (
     ConfigurationApplyRequest,
     ConfigurationAuditResponse,
@@ -18,6 +19,7 @@ from app.services.devices import service
 from app.services.errors import NotFoundError
 from app.services.ssh import SSHConfigError, parse_ssh_config
 from app.services.cisco import CiscoConnectionError, CiscoConnectionService
+from app.services.backups import create_backup, device_backups
 from app.services.cisco.configuration import ConfigurationValidationError, apply_preview, preview
 
 router = APIRouter(prefix="/devices", tags=["devices"])
@@ -130,6 +132,24 @@ def apply_configuration(device_id: int, payload: ConfigurationApplyRequest, db: 
     except NotFoundError as error:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
     except ConfigurationValidationError as error:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(error)) from error
+
+
+@router.get("/{device_id}/backups", response_model=list[BackupSummary])
+def list_device_backups(device_id: int, db: Session = Depends(get_db)) -> list[BackupSummary]:
+    try:
+        return device_backups(db, device_id)
+    except NotFoundError as error:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+
+
+@router.post("/{device_id}/backups", response_model=BackupCreateResponse, status_code=status.HTTP_201_CREATED)
+def create_device_backup(device_id: int, db: Session = Depends(get_db)) -> BackupCreateResponse:
+    try:
+        return create_backup(db, device_id, cisco_service)
+    except NotFoundError as error:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+    except CiscoConnectionError as error:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(error)) from error
 
 

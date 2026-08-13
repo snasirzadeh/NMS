@@ -67,6 +67,8 @@ export type ConfigAudit = { accepted: boolean; executed: boolean; message: strin
 export type TopologyNode = { id: string; label: string; hostname: string; managed: boolean; device_id: number | null };
 export type TopologyEdge = { id: string; source: string; target: string; source_interface: string; destination_interface: string; protocol: string; discovered_at: string };
 export type Topology = { group_id: number; nodes: TopologyNode[]; edges: TopologyEdge[]; refreshed_devices?: number; skipped_devices?: string[] };
+export type BackupSummary = { id: number; device_id: number; checksum: string; created_at: string };
+export type Backup = BackupSummary & { configuration: string };
 
 export const groupsApi = {
   tree: () => request<Group[]>("/groups/tree"),
@@ -90,4 +92,10 @@ export const devicesApi = {
   show: (deviceId: number, command: string) => request<{ command: string; output: string }>(`/devices/${deviceId}/show`, { method: "POST", body: JSON.stringify({ command }) }),
   previewConfig: (deviceId: number, commands: string[]) => request<ConfigPreview>(`/devices/${deviceId}/config/preview`, { method: "POST", body: JSON.stringify({ commands }) }),
   applyConfig: (deviceId: number, confirmation_token: string) => request<ConfigAudit>(`/devices/${deviceId}/config/apply`, { method: "POST", body: JSON.stringify({ confirmation_token, confirmed: true }) }),
+  backups: (deviceId: number) => request<BackupSummary[]>(`/devices/${deviceId}/backups`),
+  createBackup: (deviceId: number) => request<BackupSummary>(`/devices/${deviceId}/backups`, { method: "POST" }),
+};
+
+export const backupsApi = {
+  get: (backupId: number) => request<Backup>(`/backups/${backupId}`),
 };
