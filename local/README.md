@@ -86,6 +86,18 @@ curl -fsS -X POST http://127.0.0.1:8080/api/v1/devices/ssh-config/preview \
   -d '{"config":"Host cisco-sw1\n    HostName 192.0.2.10\n    User cisco\n    IdentityFile ~/.ssh/keys/cisco"}'
 ```
 
+Phase 5 adds explicit device actions. The Test Connection button calls
+`POST /api/v1/devices/{id}/test-connection`; safe show commands call
+`POST /api/v1/devices/{id}/show`. The allowlisted commands are `show version`,
+`show inventory`, `show interfaces status`, `show ip interface brief`,
+`show vlan brief`, `show cdp neighbors detail`, `show lldp neighbors detail`,
+and `show running-config`. No arbitrary shell or configuration commands are
+accepted.
+
+These actions require a real device key and are intentionally not exercised by
+the automated tests. Phase 5 tests use fake Netmiko sessions, so running the
+test suite never connects to a switch.
+
 Run local checks:
 
 ```bash

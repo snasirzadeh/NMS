@@ -53,6 +53,13 @@ export type SSHPreview = {
   warnings: string[];
 };
 
+export type ConnectionTest = {
+  success: boolean;
+  message: string;
+  hostname: string;
+  duration_ms: number;
+};
+
 export const groupsApi = {
   tree: () => request<Group[]>("/groups/tree"),
   list: () => request<Group[]>("/groups"),
@@ -66,4 +73,6 @@ export const devicesApi = {
     request<Device>("/devices", { method: "POST", body: JSON.stringify(payload) }),
   previewSsh: (config: string) =>
     request<SSHPreview>("/devices/ssh-config/preview", { method: "POST", body: JSON.stringify({ config }) }),
+  testConnection: (deviceId: number) =>
+    request<ConnectionTest>(`/devices/${deviceId}/test-connection`, { method: "POST" }),
 };

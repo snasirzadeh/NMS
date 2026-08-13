@@ -1,6 +1,6 @@
 # Cisco NMS Architecture
 
-Status: Phase 4 SSH security baseline. This document describes the target shape
+Status: Phase 5 Cisco connectivity baseline. This document describes the target shape
 of the application; implementation is staged by the phase prompts.
 
 ## Goals and boundaries
@@ -163,6 +163,7 @@ remain `/health` for container probes.
 | Devices | `GET/POST /devices`, `GET/PATCH/DELETE /devices/{id}` | Manage switch inventory |
 | Device actions | `POST /devices/{id}/refresh`, `/test-connection`, `/show` | Explicit network actions |
 | SSH configuration | `POST /devices/ssh-config/preview`, `POST /devices/{id}/ssh-config/preview` | Parse and preview safe effective settings |
+| Cisco actions | `POST /devices/{id}/test-connection`, `POST /devices/{id}/show` | Explicit Netmiko actions using an allowlist |
 | Device data | `GET /devices/{id}/interfaces`, `/vlans`, `/neighbors` | Read last fetched results |
 | Config | `POST /devices/{id}/config/preview`, `/config/apply` | Preview and confirmed configuration workflow |
 | Backups | `GET/POST /devices/{id}/backups`, `GET /backups/{id}` | Manual running-config backups |
@@ -215,10 +216,13 @@ read-only at `/run/ssh-keys`. It must not mount the host's entire `~/.ssh`.
 
 ## Cisco connection abstraction
 
-`CiscoConnection` is a small protocol with operations such as `connect`,
-`disconnect`, `send_show`, `send_config`, and `collect_facts`. A Netmiko adapter
-implements it and receives a validated connection specification from the SSH
-service. It owns timeouts, command mode, output collection, and cleanup.
+`CiscoConnectionService` is a mockable adapter boundary with `connect`,
+`test_connection`, and allowlisted `show` operations. Its Netmiko factory
+receives only the validated effective hostname, user, port, and mapped key path
+from the SSH service. It owns timeouts, authentication setup, output
+collection, sanitized exception translation, and reliable cleanup. Legacy
+algorithm directives are validated and retained in the effective SSH preview;
+transport-specific compatibility handling remains inside this adapter boundary.
 
 The Cisco service parses returned output into typed internal results for facts,
 interfaces, VLANs, and CDP/LLDP neighbors. Raw output is retained only when a
@@ -303,6 +307,10 @@ Phase 2 establishes the test harness and migration checks. Later phases add:
 - Compose smoke tests verifying service reachability and that only `web` is
   host-published.
 
+Phase 5 adds fake-session tests for explicit connection, safe show commands,
+disconnect cleanup, and sanitized network failures. No test requires Cisco
+hardware.
+
 Tests must use generated fixtures and temporary keys, never a real private key
 or production device. Network integration tests are opt-in and require an
 explicit environment flag.
@@ -321,19 +329,19 @@ explicit environment flag.
 - Unknown topology peers are stored as links rather than auto-created devices,
   avoiding false inventory while preserving discovery information.
 
-## Phase 4 acceptance criteria
+## Phase 5 acceptance criteria
 
-Phase 4 is complete when:
+Phase 5 is complete when:
 
 1. The FastAPI app has settings, database engine/session wiring, and a health
    route that remains usable without a live Cisco device.
-2. SSH config validation supports the approved directives and rejects malformed,
-   duplicate, wildcard, multi-host, and unsupported configurations.
-3. IdentityFile mapping rejects traversal and disallowed paths, maps the exact
-   host prefix to `/run/ssh-keys`, and checks regular readable files when needed.
-4. Preview responses contain effective metadata and warnings only, never key
-   contents or private-key paths.
-5. The backend test command covers valid, invalid, legacy, and path-security
-   cases without making real SSH connections.
-6. The frontend provides SSH configuration editing, safe preview metadata, and
-   non-blocking legacy algorithm warnings.
+2. Netmiko is behind a mockable connection service with timeout, authentication,
+   negotiation, and sanitized error handling.
+3. Test Connection performs one explicit connect/disconnect and returns the
+   latest request result without introducing polling or background workers.
+4. Show commands are limited to the documented safe allowlist and never invoke
+   a local shell or arbitrary configuration command.
+5. The backend test command covers fake sessions, cleanup, allowlisting, and
+   sanitized failures without real Cisco hardware.
+6. The frontend exposes Test Connection results and retains SSH preview and
+   legacy algorithm warnings.

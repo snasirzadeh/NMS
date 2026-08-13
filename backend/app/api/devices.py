@@ -3,12 +3,15 @@ from sqlalchemy.orm import Session
 
 from app.database.session import get_db
 from app.schemas.devices import DeviceCreate, DeviceRead, DeviceUpdate
+from app.schemas.cisco import ConnectionTestResponse, ShowCommandRequest, ShowCommandResponse
 from app.schemas.ssh import SSHConfigPreview, SSHConfigRequest
 from app.services.devices import service
 from app.services.errors import NotFoundError
 from app.services.ssh import SSHConfigError, parse_ssh_config
+from app.services.cisco import CiscoConnectionError, CiscoConnectionService
 
 router = APIRouter(prefix="/devices", tags=["devices"])
+cisco_service = CiscoConnectionService()
 
 
 @router.get("", response_model=list[DeviceRead])
@@ -53,6 +56,34 @@ def delete_device(device_id: int, db: Session = Depends(get_db)) -> Response:
     except NotFoundError as error:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/{device_id}/test-connection", response_model=ConnectionTestResponse)
+def test_connection(device_id: int, db: Session = Depends(get_db)) -> ConnectionTestResponse:
+    try:
+        device = service.get_device(db, device_id)
+        if not device.ssh_config:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Device has no SSH configuration")
+        result = cisco_service.test_connection(device.ssh_config)
+        return ConnectionTestResponse(**result.__dict__)
+    except NotFoundError as error:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+
+
+@router.post("/{device_id}/show", response_model=ShowCommandResponse)
+def show_command(
+    device_id: int, payload: ShowCommandRequest, db: Session = Depends(get_db)
+) -> ShowCommandResponse:
+    try:
+        device = service.get_device(db, device_id)
+        if not device.ssh_config:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Device has no SSH configuration")
+        output = cisco_service.show(device.ssh_config, payload.command)
+        return ShowCommandResponse(command=" ".join(payload.command.strip().lower().split()), output=output)
+    except NotFoundError as error:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+    except CiscoConnectionError as error:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(error)) from error
 
 
 def build_ssh_preview(payload: SSHConfigRequest) -> SSHConfigPreview:
