@@ -4,9 +4,9 @@ from sqlalchemy.orm import Session
 from app.core.config import Settings
 from app.database.base import Base
 from app.models import Device, Group
-from app.schemas.devices import DeviceCreate
+from app.schemas.devices import DeviceCreate, DeviceUpdate
 from app.schemas.groups import GroupCreate, GroupUpdate
-from app.services.devices.service import create_device
+from app.services.devices.service import create_device, update_device
 from app.services.errors import ConflictError
 from app.services.groups.service import create_group, update_group
 
@@ -57,3 +57,18 @@ def test_group_cycle_is_rejected() -> None:
             pass
         else:
             raise AssertionError("group cycle should be rejected")
+
+
+def test_device_metadata_update_preserves_device_identity() -> None:
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    with Session(engine) as db:
+        group = create_group(db, GroupCreate(name="Aria"))
+        device = create_device(db, DeviceCreate(group_id=group.id, display_name="SW-01", hostname="sw-01", management_ip="192.0.2.10"))
+
+        updated = update_device(db, device.id, DeviceUpdate(display_name="SW-01 Updated", hostname="sw-core-01", ssh_port=2222))
+
+        assert updated.id == device.id
+        assert updated.display_name == "SW-01 Updated"
+        assert updated.hostname == "sw-core-01"
+        assert updated.ssh_port == 2222

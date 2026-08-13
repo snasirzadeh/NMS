@@ -84,6 +84,8 @@ export const devicesApi = {
   get: (deviceId: number) => request<Device>(`/devices/${deviceId}`),
   create: (payload: Omit<Device, "id" | "uptime_text">) =>
     request<Device>("/devices", { method: "POST", body: JSON.stringify(payload) }),
+  update: (deviceId: number, payload: Partial<Omit<Device, "id" | "uptime_text" | "ssh_config">> & { ssh_config?: string | null }) =>
+    request<Device>(`/devices/${deviceId}`, { method: "PATCH", body: JSON.stringify(payload) }),
   previewSsh: (config: string) =>
     request<SSHPreview>("/devices/ssh-config/preview", { method: "POST", body: JSON.stringify({ config }) }),
   testConnection: (deviceId: number) =>

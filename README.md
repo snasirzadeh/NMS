@@ -112,6 +112,10 @@ Alembic migrations when the API starts.
 4. Use **Validate SSH config** before saving a device. The preview shows the
    effective host, port, user, and safe identity-file-relative path.
 
+Use **Edit** beside an existing device to update its metadata or replace its
+SSH configuration. Validate the replacement configuration before saving; the
+existing device record is updated in place.
+
 Use this sample configuration as a starting shape, replacing only the host
 and key values appropriate to your environment:
 
