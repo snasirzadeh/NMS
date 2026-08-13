@@ -3,6 +3,7 @@ import { NavLink, Route, Routes } from "react-router-dom";
 
 import { Device, devicesApi, Group, groupsApi, SSHPreview } from "./api/client";
 import { DeviceDetail } from "./components/DeviceDetail";
+import { TopologyPage } from "./components/TopologyPage";
 
 const navigation = [
   { label: "Dashboard", path: "/" },
@@ -45,4 +46,4 @@ function DevicesPage() {
 
 function PlaceholderPage({ title }: { title: string }) { return <section className="empty-state"><span className="section-kicker">MODULE</span><h1>{title}</h1><p>This foundation view is ready for its implementation phase.</p></section>; }
 
-export default function App() { return <main className="app-shell"><aside className="sidebar"><div className="brand-lockup"><div className="brand-mark">N</div><div><strong>NMS</strong><span>NETWORK CONTROL</span></div></div><nav aria-label="Primary navigation">{navigation.map((item) => <NavLink key={item.path} to={item.path} end={item.path === "/"}><span className="nav-dot" aria-hidden="true" />{item.label}</NavLink>)}</nav><footer className="sidebar-footer"><span className="status-dot" /> Local workspace</footer></aside><section className="content"><Routes><Route path="/" element={<Dashboard />} /><Route path="/groups" element={<GroupsPage />} /><Route path="/devices" element={<DevicesPage />} /><Route path="/devices/:deviceId" element={<DeviceDetail />} /><Route path="/topology" element={<PlaceholderPage title="Topology" />} /><Route path="/backups" element={<PlaceholderPage title="Backups" />} /></Routes></section></main>; }
+export default function App() { return <main className="app-shell"><aside className="sidebar"><div className="brand-lockup"><div className="brand-mark">N</div><div><strong>NMS</strong><span>NETWORK CONTROL</span></div></div><nav aria-label="Primary navigation">{navigation.map((item) => <NavLink key={item.path} to={item.path} end={item.path === "/"}><span className="nav-dot" aria-hidden="true" />{item.label}</NavLink>)}</nav><footer className="sidebar-footer"><span className="status-dot" /> Local workspace</footer></aside><section className="content"><Routes><Route path="/" element={<Dashboard />} /><Route path="/groups" element={<GroupsPage />} /><Route path="/devices" element={<DevicesPage />} /><Route path="/devices/:deviceId" element={<DeviceDetail />} /><Route path="/topology" element={<TopologyPage />} /><Route path="/backups" element={<PlaceholderPage title="Backups" />} /></Routes></section></main>; }

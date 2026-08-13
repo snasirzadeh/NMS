@@ -1,6 +1,6 @@
 # Cisco NMS Architecture
 
-Status: Phase 6 device management UI and explicit refresh baseline. This document describes the target shape
+Status: Phase 7 topology discovery and graph baseline. This document describes the target shape
 of the application; implementation is staged by the phase prompts.
 
 ## Goals and boundaries
@@ -239,14 +239,18 @@ only, but no scheduler or persistent worker is part of this architecture.
 
 ## Topology discovery
 
-`TopologyService` asks `CiscoConnection` for CDP/LLDP data, normalizes device
-and interface identifiers, resolves known devices within the same group tree,
-and upserts `TopologyLink` rows. It records the discovery protocol and
-timestamp. Ambiguous or unresolved peers are kept as external hostname links.
+`TopologyService` asks `CiscoConnection` for CDP/LLDP data only during an
+explicit group discovery request, normalizes device and interface identifiers,
+resolves known devices within the selected group tree, and replaces the
+selected group's `TopologyLink` rows. It records the discovery protocol and
+timestamp. Ambiguous or unresolved peers are kept as external hostname links;
+they are never silently added to inventory. When CDP and LLDP describe the
+same normalized link, CDP is preferred.
 
 The topology API returns nodes derived from group devices and links derived
-from persisted discovery results. Cytoscape.js or a comparable graph library
-is a frontend rendering detail; graph layout must not alter persisted data.
+from persisted discovery results. The frontend uses Cytoscape.js with pan,
+zoom, fit, interface labels, managed-device navigation, and a distinct
+unmanaged-node treatment. Graph layout must not alter persisted data.
 
 ## Frontend structure and state
 

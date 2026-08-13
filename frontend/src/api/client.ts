@@ -64,12 +64,17 @@ export type InterfaceRefresh = { name: string; description: string; admin_state:
 export type DeviceRefresh = { facts: { hostname: string; model: string; serial: string; software_version: string; uptime: string }; interfaces: InterfaceRefresh[]; vlans: { vlan_id: number; name: string; status: string }[]; neighbors: { local_interface: string; device_id: string; remote_interface: string; protocol: string; platform: string }[] };
 export type ConfigPreview = { commands: string[]; confirmation_token: string; expires_at: number };
 export type ConfigAudit = { accepted: boolean; executed: boolean; message: string };
+export type TopologyNode = { id: string; label: string; hostname: string; managed: boolean; device_id: number | null };
+export type TopologyEdge = { id: string; source: string; target: string; source_interface: string; destination_interface: string; protocol: string; discovered_at: string };
+export type Topology = { group_id: number; nodes: TopologyNode[]; edges: TopologyEdge[]; refreshed_devices?: number; skipped_devices?: string[] };
 
 export const groupsApi = {
   tree: () => request<Group[]>("/groups/tree"),
   list: () => request<Group[]>("/groups"),
   create: (payload: { name: string; parent_id: number | null; description?: string }) =>
     request<Group>("/groups", { method: "POST", body: JSON.stringify(payload) }),
+  topology: (groupId: number) => request<Topology>(`/groups/${groupId}/topology`),
+  discoverTopology: (groupId: number) => request<Topology>(`/groups/${groupId}/topology/discover`, { method: "POST" }),
 };
 
 export const devicesApi = {
