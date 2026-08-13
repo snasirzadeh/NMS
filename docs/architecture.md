@@ -1,6 +1,6 @@
 # Cisco NMS Architecture
 
-Status: Phase 8 manual configuration backup baseline. This document describes the target shape
+Status: Phase 10 documentation and release-readiness baseline. This document describes the target shape
 of the application; implementation is staged by the phase prompts.
 
 ## Goals and boundaries
