@@ -69,6 +69,8 @@ export type TopologyEdge = { id: string; source: string; target: string; source_
 export type Topology = { group_id: number; nodes: TopologyNode[]; edges: TopologyEdge[]; refreshed_devices?: number; skipped_devices?: string[] };
 export type BackupSummary = { id: number; device_id: number; checksum: string; created_at: string };
 export type Backup = BackupSummary & { configuration: string };
+export type SSHKey = { name: string; size_bytes: number; fingerprint: string };
+export type SSHKeyUpload = SSHKey & { identity_file: string };
 
 export const groupsApi = {
   tree: () => request<Group[]>("/groups/tree"),
@@ -100,4 +102,19 @@ export const devicesApi = {
 
 export const backupsApi = {
   get: (backupId: number) => request<Backup>(`/backups/${backupId}`),
+};
+
+export const settingsApi = {
+  sshKeys: () => request<SSHKey[]>("/settings/ssh-keys"),
+  uploadSshKey: async (name: string, keyFile: File): Promise<SSHKeyUpload> => {
+    const body = new FormData();
+    body.append("name", name);
+    body.append("key_file", keyFile);
+    const response = await fetch(`${apiBase}/settings/ssh-keys`, { method: "POST", body });
+    if (!response.ok) {
+      const result = await response.json().catch(() => null) as { detail?: string } | null;
+      throw new Error(result?.detail ?? `Request failed with ${response.status}`);
+    }
+    return response.json() as Promise<SSHKeyUpload>;
+  },
 };

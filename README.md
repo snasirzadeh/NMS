@@ -71,6 +71,8 @@ container: /run/ssh-keys
 Set `NMS_SSH_KEYS_GID` to the host group ID that owns this directory. Compose
 adds that group to the API container so the unprivileged API process can read
 the mounted key without making it world-readable. On Linux, use `id -g`.
+Set `NMS_API_UID` and `NMS_API_GID` to the owner IDs of the key directories when
+they differ from `1000`.
 
 The saved device SSH configuration uses the configured host prefix and is
 mapped safely to the container prefix. With the defaults, this mapping is:
@@ -82,6 +84,21 @@ IdentityFile ~/.ssh/keys/cisco
 
 Traversal, unsupported paths, and symlinks resolving outside the mounted key
 directory are rejected. The API never stores or returns private-key contents.
+
+### Add an NMS-managed key
+
+The **Settings** page can add a private key through the local browser UI. The
+uploaded file is stored in `local/ssh-keys-uploaded`, outside PostgreSQL, with
+directory mode `700` and file mode `600`. The UI shows only its name, size, and
+SHA-256 fingerprint. Device SSH configuration can reference an uploaded key
+with:
+
+```ssh
+IdentityFile ~/.ssh/nms-keys/cisco-prod
+```
+
+The original `NMS_SSH_KEYS_HOST_DIR` directory remains a separate read-only
+mount. Uploaded keys are isolated in the NMS-managed directory.
 
 ## First Startup
 

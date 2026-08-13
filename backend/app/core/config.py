@@ -22,6 +22,13 @@ class Settings(BaseSettings):
     ssh_identity_container_prefix: str = Field(
         default="/run/ssh-keys", validation_alias="SSH_IDENTITY_CONTAINER_PREFIX"
     )
+    ssh_uploaded_keys_dir: str = Field(default="/run/nms-ssh-keys", validation_alias="SSH_UPLOADED_KEYS_DIR")
+    ssh_uploaded_identity_host_prefix: str = Field(
+        default="~/.ssh/nms-keys", validation_alias="SSH_UPLOADED_IDENTITY_HOST_PREFIX"
+    )
+    ssh_uploaded_identity_container_prefix: str = Field(
+        default="/run/nms-ssh-keys", validation_alias="SSH_UPLOADED_IDENTITY_CONTAINER_PREFIX"
+    )
 
 
 @lru_cache

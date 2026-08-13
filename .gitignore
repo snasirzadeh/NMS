@@ -27,6 +27,8 @@ dist/
 *.log
 
 # Local secrets / SSH material
+/local/ssh-keys-uploaded/*
+!/local/ssh-keys-uploaded/.gitignore
 secrets/
 keys/
 *.pem

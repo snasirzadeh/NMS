@@ -169,6 +169,7 @@ remain `/health` for container probes.
 | Device data | `GET /devices/{id}/interfaces`, `/vlans`, `/neighbors` | Read last fetched results |
 | Config | `POST /devices/{id}/config/preview`, `/config/apply` | Preview and confirmed configuration workflow |
 | Backups | `GET/POST /devices/{id}/backups`, `GET /backups/{id}` | Manual running-config backups; no scheduling |
+| Settings | `GET/POST /settings/ssh-keys` | Manage local NMS-uploaded SSH key metadata and files |
 | Topology | `GET /groups/{id}/topology`, `POST /groups/{id}/topology/discover` | Read or explicitly discover links |
 
 Destructive or network-changing operations require an explicit action request;
@@ -215,6 +216,9 @@ stable redacted reason.
 
 The compose mount should expose only the dedicated NMS key directory as
 read-only at `/run/ssh-keys`. It must not mount the host's entire `~/.ssh`.
+The Settings upload workflow uses a separate local directory mounted only at
+`/run/nms-ssh-keys`; uploaded files are written with mode `0600`, never stored
+in PostgreSQL, and are exposed to the UI only through metadata and fingerprints.
 
 ## Cisco connection abstraction
 

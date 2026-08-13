@@ -71,21 +71,29 @@ def _host_directives(config_text: str) -> tuple[str, list[tuple[str, str]]]:
 
 def _map_identity_file(identity_file: str, require_exists: bool) -> tuple[str, str, bool]:
     settings = get_settings()
-    if "\x00" in identity_file or "\x00" in settings.ssh_identity_host_prefix or "\\" in identity_file:
+    prefixes = (
+        (settings.ssh_identity_host_prefix, settings.ssh_identity_container_prefix),
+        (settings.ssh_uploaded_identity_host_prefix, settings.ssh_uploaded_identity_container_prefix),
+    )
+    if "\x00" in identity_file or "\\" in identity_file:
         raise SSHConfigError("IdentityFile contains an invalid character")
     if any(part == ".." for part in PurePosixPath(identity_file).parts):
         raise SSHConfigError("IdentityFile path traversal is not allowed")
 
-    host_prefix = settings.ssh_identity_host_prefix.rstrip("/")
-    container_prefix = Path(settings.ssh_identity_container_prefix).resolve()
+    selected_prefix = next(
+        ((host.rstrip("/"), container) for host, container in prefixes if identity_file.startswith(f"{host.rstrip('/')}/")),
+        None,
+    )
+    if selected_prefix is None:
+        raise SSHConfigError("IdentityFile is outside the configured allowed host prefix")
+    host_prefix, container_prefix_text = selected_prefix
+    container_prefix = Path(container_prefix_text).resolve()
     if (
         not host_prefix
         or any(part == ".." for part in PurePosixPath(host_prefix).parts)
-        or not Path(settings.ssh_identity_container_prefix).is_absolute()
+        or not Path(container_prefix_text).is_absolute()
     ):
         raise SSHConfigError("SSH identity prefixes must be configured as valid paths")
-    if not identity_file.startswith(f"{host_prefix}/"):
-        raise SSHConfigError("IdentityFile is outside the configured allowed host prefix")
 
     relative = identity_file[len(host_prefix) + 1 :]
     if not relative or "/" in relative and any(part in {".", ""} for part in relative.split("/")):
@@ -108,8 +116,11 @@ def parse_ssh_config(config_text: str, *, require_identity_file: bool = False) -
     if not config_text.strip() or len(config_text) > MAX_CONFIG_LENGTH:
         raise SSHConfigError("SSH configuration is empty or exceeds the size limit")
     host, directives = _host_directives(config_text)
+    # Paramiko expands `~` through the process account. Parse the identity path
+    # as a harmless absolute placeholder; the raw directive is mapped below.
+    paramiko_config_text = re.sub(r"(?im)^(\s*IdentityFile\s+).*$", r"\1/run/nms-identity", config_text)
     try:
-        parsed = SSHConfig.from_text(config_text).lookup(host)
+        parsed = SSHConfig.from_text(paramiko_config_text).lookup(host)
     except (ConfigParseError, ValueError) as exc:
         raise SSHConfigError("SSH configuration could not be parsed") from exc
 

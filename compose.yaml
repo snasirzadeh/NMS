@@ -22,16 +22,23 @@ services:
     build:
       context: ./backend
     restart: unless-stopped
+    user: "${NMS_API_UID:-1000}:${NMS_API_GID:-1000}"
     environment:
       DATABASE_URL: ${DATABASE_URL:?DATABASE_URL must be set in .env}
       NMS_ENVIRONMENT: ${NMS_ENVIRONMENT:-development}
       NMS_CONFIG_CONFIRMATION_SECRET: ${NMS_CONFIG_CONFIRMATION_SECRET:?NMS_CONFIG_CONFIRMATION_SECRET must be set in .env}
+      USER: nms
+      LOGNAME: nms
       SSH_IDENTITY_HOST_PREFIX: ${SSH_IDENTITY_HOST_PREFIX:-~/.ssh/keys}
       SSH_IDENTITY_CONTAINER_PREFIX: ${SSH_IDENTITY_CONTAINER_PREFIX:-/run/ssh-keys}
+      SSH_UPLOADED_KEYS_DIR: ${SSH_UPLOADED_KEYS_DIR:-/run/nms-ssh-keys}
+      SSH_UPLOADED_IDENTITY_HOST_PREFIX: ${SSH_UPLOADED_IDENTITY_HOST_PREFIX:-~/.ssh/nms-keys}
+      SSH_UPLOADED_IDENTITY_CONTAINER_PREFIX: ${SSH_UPLOADED_IDENTITY_CONTAINER_PREFIX:-/run/nms-ssh-keys}
     group_add:
       - "${NMS_SSH_KEYS_GID:-1000}"
     volumes:
       - ${NMS_SSH_KEYS_HOST_DIR:-./local/ssh-keys}:/run/ssh-keys:ro
+      - ${NMS_SSH_UPLOADED_KEYS_HOST_DIR:-./local/ssh-keys-uploaded}:/run/nms-ssh-keys:rw
     depends_on:
       postgres:
         condition: service_healthy
