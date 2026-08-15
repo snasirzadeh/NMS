@@ -15,6 +15,11 @@ class ConnectionTestResponse(BaseModel):
     message: str
     hostname: str
     duration_ms: int
+    error_code: str | None = None
+    host_key: dict[str, str | None] | None = None
+    model: str | None = None
+    software_version: str | None = None
+    uptime_text: str | None = None
 
 
 class InterfaceRefresh(BaseModel):

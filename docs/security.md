@@ -1,72 +1,54 @@
 # Security Model and Operational Precautions
 
-This application is a local, single-user management tool. Its main security
-boundary is the browser-to-web proxy and the outbound SSH connection from the
-API container to managed switches. It is not an internet-facing multi-tenant
-service.
+This is a local, single-user network-management tool. Its security boundary is
+the browser session, the API process, the encrypted PostgreSQL vault, and
+explicit outbound SSH actions.
 
-## Threat model
+## Passwords and vault
 
-The application treats device-provided SSH configuration, CLI output, neighbor
-identifiers, and configuration commands as untrusted input. The relevant risks
-are command injection, SSH key disclosure, path traversal, unsafe network
-errors, accidental configuration changes, and unauthorized access to stored
-configuration backups.
+- The administrator login password is never encrypted or stored reversibly.
+  PostgreSQL stores only an encoded Argon2id hash with parameters and salt.
+- Vault unlocking uses a separate Argon2id salt/context to derive a KEK, which
+  decrypts a random 256-bit vault master key with AES-256-GCM.
+- The master key is held only in backend memory and is cleared on lock or
+  application shutdown as far as Python memory management permits.
+- SSH private keys and optional passphrases are encrypted with fresh AES-GCM
+  nonces. Plaintext key material is never written to disk, browser storage, or
+  logs.
+- Password rotation rewraps the same vault master key. Lost passwords have no
+  insecure reset path.
 
-## SSH keys and filesystem
+## Sessions and API
 
-- Store private keys outside the repository, preferably in a dedicated host
-  directory such as `~/.ssh/keys` with restrictive permissions.
-- Compose mounts only that directory read-only at `/run/ssh-keys`; it does not
-  mount the host `~/.ssh` directory.
-- The API container runs as the unprivileged `nms` user, drops capabilities,
-  uses `no-new-privileges`, and has a read-only root filesystem with a
-  no-execute temporary directory.
-- The dedicated key directory should use mode `750` and key files mode `640`,
-  with `NMS_SSH_KEYS_GID` set to the owning host group. Compose grants that
-  group to the API container without making the key world-readable.
-- `IdentityFile` is parsed as data. It must remain within the configured host
-  prefix and its resolved container path must remain within the mounted key
-  directory. Symlinks resolving outside that directory are rejected.
-- Private-key contents are never stored in PostgreSQL, returned by the API, or
-  written to logs.
+- Sessions use opaque random HttpOnly, SameSite cookies; the database stores
+  only token hashes.
+- Mutating authenticated requests require the server-side session CSRF token.
+- Setup is available only while no administrator exists and is protected by an
+  atomic single-user initialization transaction.
+- Credential response schemas expose metadata only: id, name, username, key
+  type/size, fingerprints, timestamps, and usage count.
 
-## Network and API boundaries
+## SSH and host keys
 
-- Only Nginx publishes a host port, bound to `127.0.0.1` by default.
-- PostgreSQL is on the internal Docker network and has no published port.
-- Browser API calls use the same-origin `/api/` reverse proxy; no permissive
-  CORS policy is enabled.
-- Nginx adds framing, content-type, referrer, content-security, and
-  permissions-policy headers. Keep the local port behind a trusted host or
-  add TLS before exposing it beyond the local machine.
-- Replace the PostgreSQL password and configuration confirmation secret in
-  `.env`; Compose refuses to start when these required values are absent.
+- The API accepts no host-provided SSH material or agent integration and does
+  not invoke arbitrary shell commands.
+- Netmiko receives an in-memory Paramiko key object with agent and filesystem
+  key discovery disabled.
+- Host keys are verified before authentication. Unknown keys require explicit
+  trust; changed keys are blocked and never auto-overwritten.
+- Legacy algorithms are enabled only by a per-device internal compatibility
+  profile, never globally.
+- Logs may include device identity, action, result, and sanitized failure code,
+  but never passwords, hashes, keys, passphrases, KEKs, vault keys, session
+  secrets, encrypted payloads, or raw SSH exception objects.
 
-## Explicit actions and secrets
+## Runtime and operations
 
-- SSH connections, refreshes, topology discovery, CLI commands, and backups
-  happen only in response to an explicit request. There is no scheduler,
-  polling loop, or background worker.
-- Show commands use an allowlist. Network exceptions are reduced to safe
-  categories before reaching the API response.
-- Configuration previews are bounded and reject shell/control operators and
-  destructive tokens. Confirmation tokens expire and are bound to the device
-  for which they were created. The current apply endpoint is audit-only and
-  does not execute commands.
-- Running configurations are stored only after a manual backup action. Treat
-  backup access as sensitive because Cisco configurations may contain secrets.
+Compose runs only `web`, `api`, and `postgres`; only web publishes a localhost
+port and PostgreSQL is internal-only. The API runs unprivileged with dropped
+capabilities, no-new-privileges, and a read-only root filesystem.
 
-## Operations checklist
-
-1. Copy `.env.example` to `.env` and replace both placeholder secrets with
-   independently generated values.
-2. Set `NMS_SSH_KEYS_HOST_DIR` to the dedicated key directory and verify key
-   permissions before starting Compose.
-3. Keep the web port bound to localhost unless a secured reverse proxy is in
-   front of it.
-4. Review backup contents and database volume permissions as sensitive data.
-5. Use `docker compose down -v` only when intentionally deleting development
-   database data.
-6. Run backend tests and the frontend build after dependency or container
-   changes.
+Configuration backups may contain device secrets and must be protected with
+the PostgreSQL volume. Run tests and the frontend build after changes. The
+application does not continuously monitor devices: device status is based on
+the most recent explicit SSH operation.

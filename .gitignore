@@ -26,9 +26,8 @@ dist/
 # Runtime
 *.log
 
-# Local secrets / SSH material
-/local/ssh-keys-uploaded/*
-!/local/ssh-keys-uploaded/.gitignore
+# Untracked local artifacts and secret quarantine; runtime code never reads it.
+/local/*
 secrets/
 keys/
 *.pem

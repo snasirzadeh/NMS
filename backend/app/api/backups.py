@@ -6,7 +6,9 @@ from app.schemas.backups import BackupRead
 from app.services.backups import backup_detail
 from app.services.errors import NotFoundError
 
-router = APIRouter(prefix="/backups", tags=["backups"])
+from app.api.dependencies import require_authenticated
+
+router = APIRouter(prefix="/backups", tags=["backups"], dependencies=[Depends(require_authenticated)])
 
 
 @router.get("/{backup_id}", response_model=BackupRead)

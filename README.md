@@ -1,266 +1,114 @@
 # Cisco NMS
 
-A local-first network management system for Cisco IOS and IOS-XE switches.
-It manages inventory, explicit SSH actions, device refresh data, group-scoped
-topology discovery, safe configuration previews, and manual running-config
-backups. It is not a monitoring platform.
+A local-first, single-user Network Management System for Cisco IOS and IOS-XE
+switches. It manages inventory, encrypted SSH credentials, explicit network
+operations, topology discovery, configuration previews, and manual backups. It
+is not a continuous monitoring platform.
 
 This independent project is not affiliated with or endorsed by Cisco Systems,
 Inc.
 
-## Requirements
+## Requirements and startup
 
-- Linux or another Docker-compatible host
-- Python 3.12 or newer for local backend tests
-- Node.js 20 or newer and npm for the frontend build
 - Docker Engine with Docker Compose
-- A dedicated Cisco SSH public/private key pair outside this repository
-
-PostgreSQL is provided by Compose. Do not install or expose PostgreSQL on the
-host for this application.
-
-## Clone and Setup
+- Python 3.12+ and Node.js 20+ only for host-side development checks
 
 ```bash
-git clone <repository-url> nms
-cd nms
 cp .env.example .env
+# Replace the PostgreSQL and confirmation-secret placeholders.
+docker compose up -d --build
 ```
 
-Edit `.env` before starting. Replace `POSTGRES_PASSWORD` and
-`NMS_CONFIG_CONFIRMATION_SECRET` with independently generated values. Set
-`DATABASE_URL` to use the same PostgreSQL password. Set
-`NMS_SSH_KEYS_HOST_DIR` to the absolute host directory containing the
-dedicated NMS private key.
+Open <http://127.0.0.1:8080>. Only `web` publishes a host port; `api` and
+`postgres` remain internal. The API applies Alembic migrations at startup. It
+does not need access to host SSH files or an SSH agent.
 
-Create the project-local development environment when running checks outside
-Docker:
+## First-run setup and login
+
+When no administrator exists, the browser displays the setup wizard. Create
+the single administrator with a unique password of at least 12 characters that
+includes upper-case, lower-case, and numeric characters.
+
+The login password is stored only as an encoded Argon2id hash. A separate
+Argon2id derivation uses the password to unwrap a random vault master key. The
+vault starts locked after every API restart and is unlocked only by successful
+login. Sessions use server-side records, HttpOnly SameSite cookies, and CSRF
+protection; the frontend does not use local storage for authentication.
+
+There is no insecure password reset. If the administrator password is lost,
+the encrypted credentials cannot be recovered.
+
+## SSH credentials
+
+Open **Credentials** and add a name, Cisco username, private key (paste or
+upload), and optional passphrase. The backend validates the key in memory,
+extracts safe metadata, encrypts key material with AES-256-GCM, and stores only
+ciphertext in PostgreSQL.
+
+After saving, a private key is never returned or displayed. There is no reveal,
+copy, download, or private-key API. **Replace Key** writes newly encrypted
+material. A credential cannot be deleted while devices reference it.
+
+## Devices, compatibility, and host keys
+
+Create a group, then add a device with management IP, SSH port, stored
+credential, platform, and compatibility profile:
+
+- **Modern** uses maintained library defaults.
+- **Cisco Legacy** enables device-scoped compatibility for older Cisco SSH
+  implementations and displays a warning. Weak algorithms are not global.
+
+The first connection to a device is blocked until its presented SSH host key
+fingerprint is explicitly trusted. Later connections compare the stored
+fingerprint. If the host key changes, the connection is blocked and the trusted
+value is never overwritten automatically.
+
+Device status means only the latest explicit SSH operation:
+
+- green: latest explicit test succeeded
+- red: latest explicit test failed
+- gray: never tested
+
+The application does not continuously monitor devices.
+
+## Explicit operations
+
+- **Test SSH Connection** connects once and persists a sanitized result.
+- **Refresh device** explicitly retrieves facts, interfaces, VLANs, and
+  CDP/LLDP neighbors.
+- **CLI** permits only the documented show-command allowlist.
+- **Topology** runs CDP/LLDP discovery only when requested.
+- **Backups** captures running configuration only when requested.
+- Configuration apply remains an explicit preview/confirmation workflow.
+
+## Password change
+
+Settings requires the current password. The backend verifies it, unwraps the
+vault master key with the old KEK, derives a new KEK, rewraps the same master
+key, and creates a new Argon2id login hash. Stored SSH credentials are not
+decrypted and re-encrypted individually.
+
+## Development checks
 
 ```bash
 ./local/setup-local.sh
-backend/.venv/bin/pytest -q
+PYTHONDONTWRITEBYTECODE=1 backend/.venv/bin/pytest -q -o cache_dir=/tmp/nms-pytest-cache
 (cd frontend && npm run build)
+docker compose config --quiet
 ```
 
-The setup script keeps generated dependencies in `backend/.venv` and
-`frontend/node_modules`. See [local/README.md](local/README.md) for removal
-commands and the recorded local setup state.
+See [docs/architecture.md](docs/architecture.md) and
+[docs/security.md](docs/security.md) for design and security details.
 
-## SSH Keys and Mapping
-
-Keep the private key outside the repository, for example:
-
-```text
-/home/alice/.ssh/keys/cisco-nms
-```
-
-Restrict the key permissions:
-
-```bash
-chmod 750 /home/alice/.ssh/keys
-chmod 640 /home/alice/.ssh/keys/cisco-nms
-```
-
-Compose mounts only the configured key directory read-only:
-
-```text
-host:      ${NMS_SSH_KEYS_HOST_DIR}
-container: /run/ssh-keys
-```
-
-Set `NMS_SSH_KEYS_GID` to the host group ID that owns this directory. Compose
-adds that group to the API container so the unprivileged API process can read
-the mounted key without making it world-readable. On Linux, use `id -g`.
-Set `NMS_API_UID` and `NMS_API_GID` to the owner IDs of the key directories when
-they differ from `1000`.
-
-The saved device SSH configuration uses the configured host prefix and is
-mapped safely to the container prefix. With the defaults, this mapping is:
-
-```text
-IdentityFile ~/.ssh/keys/cisco
-                 -> /run/ssh-keys/cisco
-```
-
-Traversal, unsupported paths, and symlinks resolving outside the mounted key
-directory are rejected. The API never stores or returns private-key contents.
-
-### Add an NMS-managed key
-
-The **Settings** page can add a private key through the local browser UI. The
-uploaded file is stored in `local/ssh-keys-uploaded`, outside PostgreSQL, with
-directory mode `700` and file mode `600`. The UI shows only its name, size, and
-SHA-256 fingerprint. Device SSH configuration can reference an uploaded key
-with:
-
-```ssh
-IdentityFile ~/.ssh/nms-keys/cisco-prod
-```
-
-The original `NMS_SSH_KEYS_HOST_DIR` directory remains a separate read-only
-mount. Uploaded keys are isolated in the NMS-managed directory.
-
-## First Startup
-
-Start the application from the repository root:
-
-```bash
-docker compose up -d --build
-```
-
-Open <http://127.0.0.1:8080>. Verify the proxy and API health endpoints:
-
-```bash
-curl -fsS http://127.0.0.1:8080/health
-curl -fsS http://127.0.0.1:8080/api/v1/health
-```
-
-Only the unprivileged `web` service publishes a host port. The API and
-PostgreSQL services remain container-internal. Compose applies pending
-Alembic migrations when the API starts.
-
-## Initial Workflow
-
-1. Open **Groups** and create the top-level group that represents a company or
-   operating boundary, such as `Aria`.
-2. Add child groups such as `Main Office`, `Factory`, or `Personal Lab`.
-3. Open **Devices**, choose a group, and add the switch identity, management IP,
-   and SSH configuration.
-4. Use **Validate SSH config** before saving a device. The preview shows the
-   effective host, port, user, and safe identity-file-relative path.
-
-Use **Edit** beside an existing device to update its metadata or replace its
-SSH configuration. Validate the replacement configuration before saving; the
-existing device record is updated in place.
-
-Use this sample configuration as a starting shape, replacing only the host
-and key values appropriate to your environment:
-
-```ssh
-Host cisco-sw1
-    HostName 192.168.35.10
-    User cisco
-    IdentityFile ~/.ssh/keys/cisco
-    IdentitiesOnly yes
-
-    KexAlgorithms +diffie-hellman-group14-sha1
-    HostKeyAlgorithms +ssh-rsa
-    PubkeyAcceptedAlgorithms +ssh-rsa
-```
-
-The legacy algorithm lines are accepted for compatibility and shown with
-warnings. Prefer modern algorithms on devices that support them.
-
-## Device Operations
-
-Open a managed device from the Devices page.
-
-- **Test SSH** performs one explicit connection test and disconnects.
-- **Refresh device** retrieves facts, inventory, interfaces, VLANs, and
-  CDP/LLDP neighbors. It does not poll or run in the background.
-- **Interfaces**, **VLANs**, and **Neighbors** show the latest successful
-  explicit refresh data. The switch front panel remains neutral until a
-  refresh returns interface data.
-- **CLI** exposes only the safe show-command allowlist, including `show
-  version`, `show inventory`, `show interfaces status`, `show ip interface
-  brief`, `show vlan brief`, `show cdp neighbors detail`, `show lldp neighbors
-  detail`, and `show running-config`.
-
-The **Configuration** tab accepts commands for validation and preview. A
-confirmation token is required for the apply step, is time-limited and bound
-to the device, and the current apply endpoint records an audit-only result;
-configuration commands are not executed in this phase.
-
-## Topology Discovery
-
-Open **Topology**, select a group, and click **Discover topology**. The backend
-explicitly retrieves CDP and LLDP data from managed devices in that group tree,
-normalizes and deduplicates links, and stores the result. Unknown peers are
-shown as **Discovered / Unmanaged** and are never silently added to inventory.
-Use the node action to move an unmanaged hostname into the device-inventory
-workflow. Pan, zoom, and fit controls affect only the graph view.
-
-## Manual Configuration Backups
-
-Open a managed device, select **Backups**, and click **Backup running
-configuration**. The backend executes `show running-config` once, stores the
-exact returned text, computes a SHA-256 checksum, and records the timestamp.
-Select a history entry to view the monospaced configuration. Backups can
-contain sensitive Cisco configuration data; protect the PostgreSQL volume and
-host access accordingly. Backups are never scheduled.
-
-## Stop, Update, and Database Backup
-
-Stop the stack without deleting data:
+## Stop and backup
 
 ```bash
 docker compose down
+docker compose exec -T postgres pg_dump -U nms -d nms --format=custom > nms.dump
 ```
 
-Update the application from a clean working tree:
-
-```bash
-git pull --ff-only
-docker compose up -d --build
-```
-
-Create a PostgreSQL logical backup through the Compose service:
-
-```bash
-docker compose exec -T postgres pg_dump \
-  sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --format=custom' \
-  > nms-$(date +%Y%m%d-%H%M%S).dump
-```
-
-The variables must be available in the shell or replaced with the values from
-`.env`. Restore into a stopped or disposable database environment after
-creating the target database:
-
-```bash
-cat backup.dump | docker compose exec -T postgres \
-  sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --clean --if-exists'
-```
-
-For a destructive local reset only, remove the Compose volume:
-
-```bash
-docker compose down -v
-```
-
-## Troubleshooting SSH
-
-**SSH authentication failed**: verify the mapped key exists inside the API
-container, the host key permissions are restrictive, the Cisco user is
-correct, and the device accepts the key. Do not paste private-key contents
-into the application.
-
-**SSH device is unreachable**: verify the management IP, route, firewall, and
-SSH port from the Docker host. The API container must be able to reach the
-device network.
-
-**SSH connection timed out**: confirm the device is listening on the configured
-port and that intermediate ACLs permit the connection. The adapter uses bounded
-connection, authentication, and banner timeouts.
-
-**SSH negotiation failed**: inspect the preview warnings and device SSH
-algorithm support. Legacy compatibility options are accepted only through the
-structured SSH configuration parser.
-
-**IdentityFile is outside the configured allowed prefix**: use a path under
-`SSH_IDENTITY_HOST_PREFIX`, normally `~/.ssh/keys`, and ensure the resolved
-file remains inside the mounted `/run/ssh-keys` directory.
-
-For security boundaries and operational precautions, see
-[docs/security.md](docs/security.md). For contribution checks, see
-[CONTRIBUTING.md](CONTRIBUTING.md).
-
-## Future Development
-
-The original implementation work is complete. For maintenance or new feature
-requests, read [`docs/README.md`](docs/README.md) and
-[`docs/project-guide/maintenance.md`](docs/project-guide/maintenance.md)
-before editing. Product operations remain documented in this README, `docs/`,
-and `local/`.
+Use `docker compose down -v` only when intentionally deleting local database
+data.
 
 ## License
 

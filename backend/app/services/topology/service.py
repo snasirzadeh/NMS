@@ -105,13 +105,13 @@ def discover_group(db: Session, group_id: int, cisco_service: CiscoConnectionSer
     records: list[tuple[Device, NormalizedNeighbor]] = []
     skipped: list[str] = []
     for device in devices:
-        if not device.ssh_config:
-            skipped.append(f"{device.display_name}: no SSH configuration")
+        if device.ssh_credential_id is None:
+            skipped.append(f"{device.display_name}: no SSH credential")
             continue
         try:
             raw = parse_neighbors(
-                cisco_service.show(device.ssh_config, "show cdp neighbors detail"),
-                cisco_service.show(device.ssh_config, "show lldp neighbors detail"),
+                cisco_service.show(device, "show cdp neighbors detail", db),
+                cisco_service.show(device, "show lldp neighbors detail", db),
             )
         except CiscoConnectionError as error:
             skipped.append(f"{device.display_name}: {error}")

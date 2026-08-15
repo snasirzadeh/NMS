@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     app_name: str = "Cisco NMS API"
-    app_version: str = "0.2.0"
+    app_version: str = "0.3.0"
     environment: str = Field(default="development", validation_alias="NMS_ENVIRONMENT")
     config_confirmation_secret: str = Field(
         default="local-development-confirmation-secret", validation_alias="NMS_CONFIG_CONFIRMATION_SECRET"
@@ -18,17 +18,10 @@ class Settings(BaseSettings):
         validation_alias="DATABASE_URL",
     )
     log_level: str = "INFO"
-    ssh_identity_host_prefix: str = Field(default="~/.ssh/keys", validation_alias="SSH_IDENTITY_HOST_PREFIX")
-    ssh_identity_container_prefix: str = Field(
-        default="/run/ssh-keys", validation_alias="SSH_IDENTITY_CONTAINER_PREFIX"
-    )
-    ssh_uploaded_keys_dir: str = Field(default="/run/nms-ssh-keys", validation_alias="SSH_UPLOADED_KEYS_DIR")
-    ssh_uploaded_identity_host_prefix: str = Field(
-        default="~/.ssh/nms-keys", validation_alias="SSH_UPLOADED_IDENTITY_HOST_PREFIX"
-    )
-    ssh_uploaded_identity_container_prefix: str = Field(
-        default="/run/nms-ssh-keys", validation_alias="SSH_UPLOADED_IDENTITY_CONTAINER_PREFIX"
-    )
+    session_cookie_name: str = "nms_session"
+    csrf_cookie_name: str = "nms_csrf"
+    session_ttl_hours: int = Field(default=12, ge=1, le=168)
+    secure_cookies: bool = Field(default=False, validation_alias="NMS_SECURE_COOKIES")
 
 
 @lru_cache

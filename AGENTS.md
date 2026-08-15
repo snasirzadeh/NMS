@@ -13,3 +13,7 @@ Before changing architecture or behavior, read:
 
 Keep this file as the repository entry point for coding agents. Do not add
 temporary task scripts or duplicate instruction files here.
+
+The maintained architecture stores SSH credentials only through the encrypted
+database vault. Do not introduce SSH configuration text, key paths, host key
+mounts, or SSH-agent integration.

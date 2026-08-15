@@ -16,10 +16,9 @@ in order.
 
 ## Historical Implementation Contracts
 
-The original implementation was completed in ten ordered phases. Their
-contracts and outcomes are preserved in [phases](phases/README.md) for
-context, acceptance criteria, and future regression work. They are historical
-records, not an active task queue.
+The original implementation was completed in ten ordered phases. Phase 11
+replaced its SSH authentication architecture. Remaining phase records are
+historical context only and must not override the maintained architecture.
 
 ## Current Rule
 

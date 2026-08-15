@@ -15,9 +15,9 @@ def checksum(configuration: str) -> str:
 
 def create_backup(db: Session, device_id: int, cisco_service: CiscoConnectionService) -> ConfigBackup:
     device = get_device(db, device_id)
-    if not device.ssh_config:
-        raise CiscoConnectionError("Device has no SSH configuration")
-    configuration = cisco_service.show(device.ssh_config, "show running-config")
+    if device.ssh_credential_id is None:
+        raise CiscoConnectionError("Device has no SSH credential")
+    configuration = cisco_service.show(device, "show running-config", db)
     return add_backup(db, device.id, configuration, checksum(configuration))
 
 

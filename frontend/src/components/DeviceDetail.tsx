@@ -21,8 +21,8 @@ export function DeviceDetail() {
   const [testResult, setTestResult] = useState<ConnectionTest | null>(null);
 
   useEffect(() => { devicesApi.get(id).then(setDevice).catch((reason: Error) => setError(reason.message)); }, [id]);
-  const refresh = async () => { setRefreshing(true); setError(""); try { setData(await devicesApi.refresh(id)); } catch (reason) { setError((reason as Error).message); } finally { setRefreshing(false); } };
-  const test = async () => { try { setTestResult(await devicesApi.testConnection(id)); } catch (reason) { setError((reason as Error).message); } };
+  const refresh = async () => { setRefreshing(true); setError(""); try { setData(await devicesApi.refresh(id)); setDevice(await devicesApi.get(id)); } catch (reason) { setError((reason as Error).message); } finally { setRefreshing(false); } };
+  const test = async () => { setError(""); try { setTestResult(await devicesApi.testConnection(id)); setDevice(await devicesApi.get(id)); } catch (reason) { setError((reason as Error).message); } };
   if (!device) return <section className="empty-state">{error ? <p className="form-error">{error}</p> : <p>Loading device...</p>}</section>;
 
   return <>

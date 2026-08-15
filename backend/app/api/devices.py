@@ -14,15 +14,16 @@ from app.schemas.cisco import (
     ShowCommandRequest,
     ShowCommandResponse,
 )
-from app.schemas.ssh import SSHConfigPreview, SSHConfigRequest
+from app.schemas.ssh import HostKeyTrustRequest
 from app.services.devices import service
 from app.services.errors import NotFoundError
-from app.services.ssh import SSHConfigError, parse_ssh_config
 from app.services.cisco import CiscoConnectionError, CiscoConnectionService
 from app.services.backups import create_backup, device_backups
 from app.services.cisco.configuration import ConfigurationValidationError, apply_preview, preview
 
-router = APIRouter(prefix="/devices", tags=["devices"])
+from app.api.dependencies import require_authenticated
+
+router = APIRouter(prefix="/devices", tags=["devices"], dependencies=[Depends(require_authenticated)])
 cisco_service = CiscoConnectionService()
 
 
@@ -37,9 +38,7 @@ def list_devices(
 def create_device(payload: DeviceCreate, db: Session = Depends(get_db)) -> DeviceRead:
     try:
         return service.create_device(db, payload)
-    except (NotFoundError, SSHConfigError) as error:
-        if isinstance(error, SSHConfigError):
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(error)) from error
+    except NotFoundError as error:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
 
 
@@ -55,9 +54,7 @@ def get_device(device_id: int, db: Session = Depends(get_db)) -> DeviceRead:
 def update_device(device_id: int, payload: DeviceUpdate, db: Session = Depends(get_db)) -> DeviceRead:
     try:
         return service.update_device(db, device_id, payload)
-    except (NotFoundError, SSHConfigError) as error:
-        if isinstance(error, SSHConfigError):
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(error)) from error
+    except NotFoundError as error:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
 
 
@@ -74,9 +71,16 @@ def delete_device(device_id: int, db: Session = Depends(get_db)) -> Response:
 def test_connection(device_id: int, db: Session = Depends(get_db)) -> ConnectionTestResponse:
     try:
         device = service.get_device(db, device_id)
-        if not device.ssh_config:
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Device has no SSH configuration")
-        result = cisco_service.test_connection(device.ssh_config)
+        result = cisco_service.test_connection(device, db)
+        service.record_connection_result(
+            db,
+            device,
+            success=result.success,
+            error_code=result.error_code,
+            model=result.model,
+            software_version=result.software_version,
+            uptime_text=result.uptime_text,
+        )
         return ConnectionTestResponse(**result.__dict__)
     except NotFoundError as error:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
@@ -88,9 +92,7 @@ def show_command(
 ) -> ShowCommandResponse:
     try:
         device = service.get_device(db, device_id)
-        if not device.ssh_config:
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Device has no SSH configuration")
-        output = cisco_service.show(device.ssh_config, payload.command)
+        output = cisco_service.show(device, payload.command, db)
         return ShowCommandResponse(command=" ".join(payload.command.strip().lower().split()), output=output)
     except NotFoundError as error:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
@@ -102,9 +104,9 @@ def show_command(
 def refresh_device(device_id: int, db: Session = Depends(get_db)) -> DeviceRefreshResponse:
     try:
         device = service.get_device(db, device_id)
-        if not device.ssh_config:
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Device has no SSH configuration")
-        return cisco_service.refresh(device.ssh_config)
+        result = cisco_service.refresh(device, db)
+        service.record_device_facts(db, device, result.facts)
+        return result
     except NotFoundError as error:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
     except CiscoConnectionError as error:
@@ -153,29 +155,19 @@ def create_device_backup(device_id: int, db: Session = Depends(get_db)) -> Backu
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(error)) from error
 
 
-def build_ssh_preview(payload: SSHConfigRequest) -> SSHConfigPreview:
+@router.post("/{device_id}/host-key/trust", response_model=DeviceRead)
+def trust_host_key(device_id: int, payload: HostKeyTrustRequest, db: Session = Depends(get_db)) -> DeviceRead:
     try:
-        preview = parse_ssh_config(payload.config)
-    except SSHConfigError as error:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(error)) from error
-    return SSHConfigPreview(
-        host=preview.host,
-        hostname=preview.hostname,
-        user=preview.user,
-        port=preview.port,
-        identities_only=preview.identities_only,
-        identity_file_relative=preview.identity_file_relative,
-        identity_file_exists=preview.identity_file_exists,
-        algorithms=preview.algorithms,
-        warnings=preview.warnings,
-    )
-
-
-@router.post("/ssh-config/preview", response_model=SSHConfigPreview)
-def preview_ssh_config(payload: SSHConfigRequest) -> SSHConfigPreview:
-    return build_ssh_preview(payload)
-
-
-@router.post("/{device_id}/ssh-config/preview", response_model=SSHConfigPreview)
-def preview_device_ssh_config(device_id: int, payload: SSHConfigRequest) -> SSHConfigPreview:
-    return build_ssh_preview(payload)
+        device = service.get_device(db, device_id)
+        presented, algorithm = cisco_service.presented_host_key(device)
+        if payload.fingerprint != presented:
+            raise HTTPException(status_code=409, detail="Presented host key does not match the requested fingerprint")
+        device.trusted_host_key_fingerprint = presented
+        device.trusted_host_key_algorithm = algorithm
+        db.commit()
+        db.refresh(device)
+        return device
+    except NotFoundError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    except CiscoConnectionError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error

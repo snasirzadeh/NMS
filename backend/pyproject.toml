@@ -12,6 +12,7 @@ dependencies = [
   "pydantic-settings",
   "netmiko",
   "python-multipart",
+  "cryptography>=44",
 ]
 
 [project.optional-dependencies]

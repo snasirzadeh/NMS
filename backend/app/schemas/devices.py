@@ -12,7 +12,8 @@ class DeviceBase(BaseModel):
     device_type: str = Field(default="switch", min_length=1, max_length=100)
     platform: str | None = Field(default=None, max_length=100)
     ssh_port: int = Field(default=22, ge=1, le=65535)
-    ssh_config: str | None = None
+    ssh_credential_id: int | None = Field(default=None, gt=0)
+    ssh_profile: str = Field(default="modern", pattern="^(modern|cisco_legacy)$")
     description: str | None = None
     site: str | None = Field(default=None, max_length=200)
     rack: str | None = Field(default=None, max_length=100)
@@ -42,7 +43,8 @@ class DeviceUpdate(BaseModel):
     device_type: str | None = Field(default=None, min_length=1, max_length=100)
     platform: str | None = Field(default=None, max_length=100)
     ssh_port: int | None = Field(default=None, ge=1, le=65535)
-    ssh_config: str | None = None
+    ssh_credential_id: int | None = Field(default=None, gt=0)
+    ssh_profile: str | None = Field(default=None, pattern="^(modern|cisco_legacy)$")
     description: str | None = None
     site: str | None = Field(default=None, max_length=200)
     rack: str | None = Field(default=None, max_length=100)
@@ -67,5 +69,12 @@ class DeviceRead(DeviceBase):
 
     id: int
     uptime_text: str | None
+    ssh_credential_id: int | None
+    ssh_profile: str
+    trusted_host_key_fingerprint: str | None
+    trusted_host_key_algorithm: str | None
+    last_connection_status: str
+    last_connection_test_at: datetime | None
+    last_connection_error_code: str | None
     created_at: datetime
     updated_at: datetime

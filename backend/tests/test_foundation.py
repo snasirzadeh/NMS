@@ -15,13 +15,13 @@ def test_settings_have_safe_local_defaults() -> None:
     settings = Settings(_env_file=None)
 
     assert settings.database_url.startswith("postgresql+psycopg://")
-    assert settings.ssh_identity_container_prefix == "/run/ssh-keys"
+    assert settings.session_cookie_name == "nms_session"
 
 
 def test_foundation_models_are_registered() -> None:
     assert Group.__table__.name == "groups"
     assert Device.__table__.name == "devices"
-    assert {"groups", "devices"}.issubset(Base.metadata.tables)
+    assert {"groups", "devices", "admins", "vaults", "ssh_credentials", "auth_sessions"}.issubset(Base.metadata.tables)
 
 
 def test_nested_groups_and_device_ownership() -> None:

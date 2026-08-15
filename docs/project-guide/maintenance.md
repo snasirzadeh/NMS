@@ -1,7 +1,7 @@
 # Future Maintenance Workflow
 
-The original ten implementation phases are complete. Future work is normal
-maintenance or a clearly scoped feature request, not another soft phase.
+The original implementation and the Phase 11 SSH-vault refactor are complete.
+Future work is normal maintenance or a clearly scoped feature request.
 
 ## Before Editing
 
@@ -18,7 +18,7 @@ security-sensitive behavior covered by tests. Update `README.md`, `docs/`, or
 ## Verification
 
 ```bash
-backend/.venv/bin/pytest -q
+PYTHONDONTWRITEBYTECODE=1 backend/.venv/bin/pytest -q -o cache_dir=/tmp/nms-pytest-cache
 (cd frontend && npm run build)
 git diff --check
 ```

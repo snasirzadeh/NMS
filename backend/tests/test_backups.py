@@ -7,9 +7,9 @@ from app.services.backups.service import checksum, create_backup
 
 
 class FakeCiscoService:
-    def show(self, config_text: str, command: str) -> str:
+    def show(self, device: Device, command: str, db: Session) -> str:
         assert command == "show running-config"
-        assert config_text == "opaque ssh configuration"
+        assert device.ssh_credential_id == 1
         return "version 17.9\ninterface Gi1/0/1\n description uplink\n"
 
 
@@ -24,7 +24,11 @@ def test_create_backup_stores_configuration_and_checksum() -> None:
         group = Group(name="Aria")
         db.add(group)
         db.commit()
-        device = Device(group_id=group.id, display_name="SW-01", hostname="sw-01", management_ip="192.0.2.10", ssh_config="opaque ssh configuration")
+        from app.models import SSHCredential
+        credential = SSHCredential(name="backup-key", username="cisco", encrypted_private_key=b"x", private_key_nonce=b"y", key_type="RSA", key_bits=2048, key_fingerprint="SHA256:test")
+        db.add(credential)
+        db.commit()
+        device = Device(group_id=group.id, display_name="SW-01", hostname="sw-01", management_ip="192.0.2.10", ssh_credential_id=credential.id)
         db.add(device)
         db.commit()
 

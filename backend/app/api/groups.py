@@ -9,7 +9,9 @@ from app.services.errors import ConflictError, NotFoundError
 from app.services.groups import service
 from app.services.topology import discover_group, normalize_hostname, topology_for_group
 
-router = APIRouter(prefix="/groups", tags=["groups"])
+from app.api.dependencies import require_authenticated
+
+router = APIRouter(prefix="/groups", tags=["groups"], dependencies=[Depends(require_authenticated)])
 cisco_service = CiscoConnectionService()
 
 
